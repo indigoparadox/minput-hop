@@ -1,10 +1,14 @@
 
 #ifdef WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #include <windows.h>
+typedef unsigned int uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
+typedef int ssize_t;
 #else
 #include <stdint.h>
-#include <assert.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
@@ -16,6 +20,9 @@
 #include <arpa/inet.h>
 #include <stdarg.h>
 #endif
+
+#include <assert.h>
+#include <stdio.h>
 
 #define swap_32( num ) (((num>>24)&0xff) | ((num<<8)&0xff0000) | ((num>>8)&0xff00) | ((num<<24)&0xff000000))
 
@@ -138,7 +145,7 @@ cleanup:
    return out_pos;
 }
 
-int send_syn_msg( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
+uint32_t send_syn_msg( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    char out_buf[SOCKBUF_SZ + 1];
    uint32_t out_pos = 0;
    va_list args;
@@ -163,6 +170,8 @@ int send_syn_msg( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    }
 
    send( sockfd, out_buf, out_pos + 4, 0 );
+
+   return out_pos;
 }
 
 int main() {
@@ -177,6 +186,10 @@ int main() {
    char sockbuf[SOCKBUF_SZ + 1];
    ssize_t i = 0,
       recv_sz = 0;
+
+   assert( 4 == sizeof( uint32_t ) );
+   assert( 2 == sizeof( uint16_t ) );
+   assert( 1 == sizeof( uint8_t ) );
    
    /* Resolve server address. */
    memset( &hints, 0, sizeof( struct addrinfo ) );
@@ -292,12 +305,18 @@ int main() {
 cleanup:
 
    if( NULL != servinfo ) {
+#ifndef WIN32
       freeaddrinfo( servinfo );
+#endif /* !WIN32 */
    }
 
    if( 0 < sockfd ) {
       printf( "closing socket...\n" );
+#ifdef WIN32
+      closesocket( sockfd );
+#else
       close( sockfd );
+#endif
    }
 
    return retval; 
