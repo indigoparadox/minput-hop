@@ -1,7 +1,6 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-#include <ws2tcpip.h>
 #include <windows.h>
 typedef unsigned int uint32_t;
 typedef unsigned short uint16_t;
@@ -30,7 +29,7 @@ typedef int ssize_t;
 
 #define SCREEN_NAME mintest
 #define SERVER_IP "192.168.250.166"
-#define SERVER_PORT "24800"
+#define SERVER_PORT 24800
 
 #define SOCKBUF_SZ 4096
 
@@ -180,34 +179,44 @@ int main() {
       pkt_type = 0;
    uint16_t ver_maj = 0,
       ver_min = 0;
-   struct addrinfo hints;
-   struct addrinfo* servinfo;
+   struct sockaddr_in servaddr;
    int retval = 0;
    char sockbuf[SOCKBUF_SZ + 1];
    ssize_t i = 0,
       recv_sz = 0;
+#ifdef WIN32
+   WSADATA wsa_data;
+#endif /* WIN32 */
 
    assert( 4 == sizeof( uint32_t ) );
    assert( 2 == sizeof( uint16_t ) );
    assert( 1 == sizeof( uint8_t ) );
+
+#ifdef WIN32
+   printf( "starting up...\n" );
+   retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
+   if( NO_ERROR != retval ) {
+      printf( "error at WSAStartup()\n" );
+      goto cleanup;
+   }
+#endif /* WIN32 */
    
    /* Resolve server address. */
-   memset( &hints, 0, sizeof( struct addrinfo ) );
-   hints.ai_family = AF_UNSPEC;
-   hints.ai_socktype = SOCK_STREAM;
-
-   retval = getaddrinfo( SERVER_IP, SERVER_PORT, &hints, &servinfo );
-   assert( 0 == retval );
+   memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
+   servaddr.sin_family = AF_INET;
+   servaddr.sin_port = htons( SERVER_PORT );
+   servaddr.sin_addr.s_addr = inet_addr( SERVER_IP );
 
    /* Open socket and connect. */
-   sockfd = socket(
-      servinfo->ai_family, servinfo->ai_socktype, servinfo->ai_protocol );
+   printf( "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
+   sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
    if( -1 == sockfd ) {
       perror( "socket" );
       goto cleanup;
    }
 
-   retval = connect( sockfd, servinfo->ai_addr, servinfo->ai_addrlen );
+   retval = connect(
+      sockfd, (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
    if( retval ) {
       perror( "connect" );
       goto cleanup;
@@ -303,12 +312,6 @@ int main() {
    } while( 0 <= recv_sz );
 
 cleanup:
-
-   if( NULL != servinfo ) {
-#ifndef WIN32
-      freeaddrinfo( servinfo );
-#endif /* !WIN32 */
-   }
 
    if( 0 < sockfd ) {
       printf( "closing socket...\n" );

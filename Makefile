@@ -11,7 +11,7 @@ minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined
 all: minhop minhop32.exe
 
 minhop32.exe: $(addprefix obj/win32/,$(OBJECTS))
-	wlink system nt name minhop32 lib wsock32 lib ws2_32 fil {$^}
+	wlink system nt name minhop32 lib wsock32 fil {$^}
 
 minhop: $(addprefix obj/unix/,$(OBJECTS))
 	gcc $(CFLAGS) -o "$@" $^
