@@ -12,11 +12,11 @@ extern FILE* g_dbg;
 void synproto_dump( const char* buf, size_t buf_sz ) {
    size_t i = 0;
 
-   fprintf( g_dbg, "%ld bytes\n", buf_sz );
+   osio_printf( __FILE__, __LINE__, "%ld bytes\n", buf_sz );
    for( i = 0 ; buf_sz > i ; i++ ) {
-      fprintf( g_dbg, "0x%02x (%c) ", buf[i], buf[i] );
+      osio_printf( __FILE__, __LINE__, "0x%02x (%c) ", buf[i], buf[i] );
    }
-   fprintf( g_dbg, " (%s)\n", buf );
+   osio_printf( __FILE__, __LINE__, " (%s)\n", buf );
 }
 
 #define SYN_INT_SZ 2
@@ -81,7 +81,7 @@ size_t synproto_printf(
                break;
 
             default:
-               fprintf( g_dbg, "invalid token size (%d)?\n", in_token );
+               osio_printf( __FILE__, __LINE__, "invalid token size (%d)?\n", in_token );
                goto cleanup;
             }
 
@@ -100,7 +100,7 @@ size_t synproto_printf(
       case 's':
          if( in_token ) {
             arg_s = va_arg( args, char* );
-            fprintf( g_dbg, "str: %s\n", arg_s );
+            osio_printf( __FILE__, __LINE__, "str: %s\n", arg_s );
             for( i = 0 ; '\0' != arg_s[i]; i++ ) {
                buf[out_pos++] = arg_s[i];
             }
@@ -135,14 +135,14 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    out_pos = synproto_printf( &(out_buf[4]), SOCKBUF_SZ - 4, fmt, args );
    va_end( args );
 
-   fprintf( g_dbg, "sending packet:\n" );
+   osio_printf( __FILE__, __LINE__, "sending packet:\n" );
    synproto_dump( out_buf, out_pos + 4 );
 
    if( force_sz ) {  
-      fprintf( g_dbg, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
+      osio_printf( __FILE__, __LINE__, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
       *buf_sz_p = swap_32( 4 );
    } else {
-      fprintf( g_dbg, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
+      osio_printf( __FILE__, __LINE__, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
       *buf_sz_p = swap_32( out_pos );
    }
 
@@ -151,29 +151,29 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    return out_pos;
 }
 
-void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
-   uint32_t pkt_sz = 0,
-      pkt_type = 0;
+int synproto_parse(
+   int sockfd, const char* pkt_buf, size_t pkt_buf_sz, uint32_t* calv_deadline
+) {
+   uint32_t* pkt_type_p = (uint32_t*)&(pkt_buf[4]);
    uint16_t ver_maj = 0,
       ver_min = 0,
       mouse_x = 0,
       mouse_y = 0,
       screen_w = 0,
       screen_h = 0;
+   int retval = 0;
 
    /* src/lib/barrier/protocol_types.cpp */
 
-   memcpy( &pkt_sz, pkt_buf, 4 );
-   pkt_sz = swap_32( pkt_sz );
-   
-   memcpy( &pkt_type, &(pkt_buf[4]), 4 );
-   pkt_type = swap_32( pkt_type );
+   osio_printf( __FILE__, __LINE__, "------\n" );
 
-   fprintf( g_dbg, "pkt type: %d\n", pkt_type );
+   osio_printf( __FILE__, __LINE__, "pkt type: %c%c%c%c (0x%08x)\n",
+      pkt_buf[4], pkt_buf[5], pkt_buf[6], pkt_buf[7],
+      swap_32( *pkt_type_p ) );
 
-   switch( pkt_type ) {
+   switch( swap_32( *pkt_type_p ) ) {
 
-   case 1113682546: /* "Barr" */
+   case 0x42617272: /* "Barr" */
 
       /* Grab the version out of the server packet. */
       memcpy( &ver_maj, &(pkt_buf[11]), 2 );
@@ -182,7 +182,7 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
       memcpy( &ver_min, &(pkt_buf[13]), 2 );
       ver_min = swap_16( ver_min );
 
-      fprintf( g_dbg, "%u barrier %u.%u found\n", pkt_sz, ver_maj, ver_min );
+      osio_printf( __FILE__, __LINE__, "barrier %u.%u found\n", ver_maj, ver_min );
 
       /* Send an acknowledgement and our name. */
       synproto_send(
@@ -194,7 +194,7 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
 
       osio_screen_get_w_h( &screen_w, &screen_h );
 
-      fprintf( g_dbg, "sw: %u, sh: %u\n", screen_w, screen_h );
+      osio_printf( __FILE__, __LINE__, "sw: %u, sh: %u\n", screen_w, screen_h );
       
       synproto_send(
          sockfd, 0, "DINF%2i%2i%2i%2i%2i%2i%2i",
@@ -203,24 +203,25 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
       break;
 
    case 1128874315: /* CIAK */
-      fprintf( g_dbg, "CIAK?\n" );
+      osio_printf( __FILE__, __LINE__, "CIAK?\n" );
       break;
 
    case 1129467728: /* CROP */
-      fprintf( g_dbg, "CROP?\n" );
+      osio_printf( __FILE__, __LINE__, "CROP?\n" );
       break;
 
    case 1128352854: /* "CALV" */
-      fprintf( g_dbg, "Ping... Pong!\n" );
+      osio_printf( __FILE__, __LINE__, "Ping... Pong!\n" );
       synproto_send( sockfd, 4, "CALV%4iCNOP", 4 );
+      *calv_deadline = osio_time() + SYNPROTO_TIMEOUT_MS;
       break;
 
    case 1128877646: /* "CINN" */
-      fprintf( g_dbg, "in!\n" );
+      osio_printf( __FILE__, __LINE__, "in!\n" );
       break;
 
    case 1145261136: /* DCLP */
-      fprintf( g_dbg, "clip in!\n" );
+      osio_printf( __FILE__, __LINE__, "clip in!\n" );
       break;
 
    case 1145916758: /* DMMV */
@@ -231,7 +232,7 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
       memcpy( &mouse_y, &(pkt_buf[10]), 2 );
       mouse_y = swap_16( mouse_y );
 
-      fprintf( g_dbg, "mmv: %u, %u\n", mouse_x, mouse_y );
+      osio_printf( __FILE__, __LINE__, "mmv: %u, %u\n", mouse_x, mouse_y );
 
       osio_mouse_move( mouse_x, mouse_y );
       break;
@@ -245,15 +246,17 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
       break;
 
    case 1129272660: /* COUT */
-      fprintf( g_dbg, "out!\n" );
+      osio_printf( __FILE__, __LINE__, "out!\n" );
       break;
 
    case 1161969988: /* "EBAD" */
 
    default:
       /* Not found? Then what *did* we get? */
-      fprintf( g_dbg, "invalid packet:\n" );
+      osio_printf( __FILE__, __LINE__, "invalid packet:\n" );
       synproto_dump( pkt_buf, pkt_buf_sz );
+
+      retval = 1;
 
       /* goto cleanup; */
    }

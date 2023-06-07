@@ -24,9 +24,13 @@ typedef int ssize_t;
 #  define SOCKBUF_SZ 4096
 #endif /* !SOCKBUF_SZ */
 
-#define swap_32( num ) (((num>>24)&0xff) | ((num<<8)&0xff0000) | ((num>>8)&0xff00) | ((num<<24)&0xff000000))
+#ifndef SYNPROTO_TIMEOUT_MS
+#  define SYNPROTO_TIMEOUT_MS 5000
+#endif /* !SYNPROTO_TIMEOUT_MS */
 
-#define swap_16( num ) ((num>>8) | (num<<8));
+#define swap_32( num ) ((((num)>>24)&0xff) | (((num)<<8)&0xff0000) | (((num)>>8)&0xff00) | (((num)<<24)&0xff000000))
+
+#define swap_16( num ) (((num)>>8) | ((num)<<8));
 
 void synproto_dump( const char* buf, size_t buf_sz );
 
@@ -35,7 +39,9 @@ size_t synproto_printf(
 
 uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... );
 
-void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz );
+int synproto_parse(
+   int sockfd, const char* pkt_buf, size_t pkt_buf_sz, uint32_t* calv_deadline
+);
 
 #endif /* SYNPROTO_H */
 

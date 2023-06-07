@@ -10,13 +10,13 @@
 #include <stdio.h>
 
 #include "synproto.h"
+#include "osio.h"
 
 #define SCREEN_NAME mintest
 #define SERVER_IP "192.168.250.166"
 #define SERVER_PORT 24800
 
-FILE* g_dbg = NULL;
-
+extern FILE* g_dbg;
 
 int main() {
    int sockfd = 0;
@@ -28,20 +28,22 @@ int main() {
 #ifdef MINPUT_OS_WIN
    WSADATA wsa_data;
 #endif /* MINPUT_OS_WIN */
+   size_t sockbuf_offset = 0;
+   uint32_t calv_deadline = 0,
+      time_now = 0;
 
    assert( 4 == sizeof( uint32_t ) );
    assert( 2 == sizeof( uint16_t ) );
    assert( 1 == sizeof( uint8_t ) );
 
-   /*g_dbg = fopen( "dbg.txt", "w" );*/
-   g_dbg = stdout;
+   g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
 
 #ifdef MINPUT_OS_WIN
-   fprintf( g_dbg, "starting up...\n" );
+   osio_printf( __FILE__, __LINE__, "starting up...\n" );
    retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
    if( NO_ERROR != retval ) {
-      fprintf( g_dbg, "error at WSAStartup()\n" );
+      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
       goto cleanup;
    }
 #endif /* MINPUT_OS_WIN */
@@ -52,40 +54,71 @@ int main() {
    servaddr.sin_port = htons( SERVER_PORT );
    servaddr.sin_addr.s_addr = inet_addr( SERVER_IP );
 
-   /* Open socket and connect. */
-   fprintf( g_dbg, "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
-   sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-   if( -1 == sockfd ) {
-      perror( "socket" );
-      goto cleanup;
-   }
-
-   retval = connect(
-      sockfd, (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
-   if( retval ) {
-      perror( "connect" );
-      goto cleanup;
-   } else {
-      fprintf( g_dbg, "connected\n" );
-   }
-
    do {
 
+      if( 0 == sockfd ) {
+         /* Open socket. */
+         osio_printf( __FILE__, __LINE__,
+            "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
+         sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+         if( -1 == sockfd ) {
+            perror( "socket" );
+            goto cleanup;
+         }
+
+         /* Connect socket. */
+         retval = connect(
+            sockfd, (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
+         if( retval ) {
+            perror( "connect" );
+            goto cleanup;
+         } else {
+            osio_printf( __FILE__, __LINE__, "connected\n" );
+         }
+
+         calv_deadline = osio_time() + SYNPROTO_TIMEOUT_MS;
+      }
+
       /* Receive handshake opener. */
-      memset( sockbuf, '\0', SOCKBUF_SZ + 1 );
-      recv_sz = recv( sockfd, sockbuf, SOCKBUF_SZ, 0 );
+      recv_sz = recv(
+         sockfd, &(sockbuf[sockbuf_offset]), SOCKBUF_SZ - sockbuf_offset, 0 );
       if( 0 >= recv_sz ) {
+         /* Connection died. */
+         continue;
+      } else if( 4 == recv_sz ) {
+         /* The size was split off the rest of the packet? Wait for the rest!
+          */
+         sockbuf_offset += recv_sz;
          continue;
       }
 
-      synproto_parse( sockfd, sockbuf, recv_sz );
+      retval = synproto_parse( sockfd, sockbuf, recv_sz, &calv_deadline );
+
+      memset( sockbuf, '\0', SOCKBUF_SZ + 1 );
+      sockbuf_offset = 0;
+
+      time_now = osio_time();
+      if( time_now > calv_deadline ) {
+         /* Too long since the last keepalive! Restart! */
+
+         osio_printf( __FILE__, __LINE__,
+            "timed out (%u past %u), restarting!\n",
+            time_now, calv_deadline );
+
+#ifdef MINPUT_OS_WIN
+         closesocket( sockfd );
+#else
+         close( sockfd );
+#endif /* MINPUT_OS_WIN */
+         sockfd = 0;
+      }
 
    } while( 0 <= recv_sz );
 
 cleanup:
 
    if( 0 < sockfd ) {
-      fprintf( g_dbg, "closing socket...\n" );
+      osio_printf( __FILE__, __LINE__, "closing socket...\n" );
 #ifdef MINPUT_OS_WIN
       closesocket( sockfd );
 #else
