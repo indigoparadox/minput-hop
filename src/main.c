@@ -2,7 +2,7 @@
 #ifdef WIN32
 #include <winsock2.h>
 #include <windows.h>
-typedef unsigned int uint32_t;
+typedef unsigned long int uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 typedef int ssize_t;
@@ -33,14 +33,16 @@ typedef int ssize_t;
 
 #define SOCKBUF_SZ 4096
 
+FILE* g_dbg = NULL;
+
 void dump_pkt( const char* buf, size_t buf_sz ) {
    size_t i = 0;
 
-   printf( "%ld bytes\n", buf_sz );
+   fprintf( g_dbg, "%ld bytes\n", buf_sz );
    for( i = 0 ; buf_sz > i ; i++ ) {
-      printf( "0x%02x (%c) ", buf[i], buf[i] );
+      fprintf( g_dbg, "0x%02x (%c) ", buf[i], buf[i] );
    }
-   printf( " (%s)\n", buf );
+   fprintf( g_dbg, " (%s)\n", buf );
 }
 
 #define SYN_INT_SZ 2
@@ -103,7 +105,7 @@ size_t syn_printf( char* buf, size_t buf_sz, const char* fmt, va_list args ) {
                break;
 
             default:
-               printf( "invalid token size (%d)?\n", in_token );
+               fprintf( g_dbg, "invalid token size (%d)?\n", in_token );
                goto cleanup;
             }
 
@@ -122,7 +124,7 @@ size_t syn_printf( char* buf, size_t buf_sz, const char* fmt, va_list args ) {
       case 's':
          if( in_token ) {
             arg_s = va_arg( args, char* );
-            printf( "str: %s\n", arg_s );
+            fprintf( g_dbg, "str: %s\n", arg_s );
             for( i = 0 ; '\0' != arg_s[i]; i++ ) {
                buf[out_pos++] = arg_s[i];
             }
@@ -157,14 +159,14 @@ uint32_t send_syn_msg( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    out_pos = syn_printf( &(out_buf[4]), SOCKBUF_SZ - 4, fmt, args );
    va_end( args );
 
-   printf( "sending packet:\n" );
+   fprintf( g_dbg, "sending packet:\n" );
    dump_pkt( out_buf, out_pos + 4 );
 
    if( force_sz ) {  
-      printf( "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
+      fprintf( g_dbg, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
       *buf_sz_p = swap_32( 4 );
    } else {
-      printf( "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
+      fprintf( g_dbg, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
       *buf_sz_p = swap_32( out_pos );
    }
 
@@ -178,7 +180,9 @@ int main() {
    uint32_t pkt_sz = 0,
       pkt_type = 0;
    uint16_t ver_maj = 0,
-      ver_min = 0;
+      ver_min = 0,
+      mouse_x = 0,
+      mouse_y = 0;
    struct sockaddr_in servaddr;
    int retval = 0;
    char sockbuf[SOCKBUF_SZ + 1];
@@ -192,11 +196,15 @@ int main() {
    assert( 2 == sizeof( uint16_t ) );
    assert( 1 == sizeof( uint8_t ) );
 
+   /*g_dbg = fopen( "dbg.txt", "w" );*/
+   g_dbg = stdout;
+   assert( NULL != g_dbg );
+
 #ifdef WIN32
-   printf( "starting up...\n" );
+   fprintf( g_dbg, "starting up...\n" );
    retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
    if( NO_ERROR != retval ) {
-      printf( "error at WSAStartup()\n" );
+      fprintf( g_dbg, "error at WSAStartup()\n" );
       goto cleanup;
    }
 #endif /* WIN32 */
@@ -208,7 +216,7 @@ int main() {
    servaddr.sin_addr.s_addr = inet_addr( SERVER_IP );
 
    /* Open socket and connect. */
-   printf( "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
+   fprintf( g_dbg, "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
    sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
    if( -1 == sockfd ) {
       perror( "socket" );
@@ -221,7 +229,7 @@ int main() {
       perror( "connect" );
       goto cleanup;
    } else {
-      printf( "connected\n" );
+      fprintf( g_dbg, "connected\n" );
    }
 
    do {
@@ -241,7 +249,7 @@ int main() {
       memcpy( &pkt_type, &(sockbuf[4]), 4 );
       pkt_type = swap_32( pkt_type );
 
-      printf( "pkt type: %d\n", pkt_type );
+      fprintf( g_dbg, "pkt type: %d\n", pkt_type );
 
       switch( pkt_type ) {
 
@@ -254,7 +262,7 @@ int main() {
          memcpy( &ver_min, &(sockbuf[13]), 2 );
          ver_min = swap_16( ver_min );
 
-         printf( "%u barrier %u.%u found\n", pkt_sz, ver_maj, ver_min );
+         fprintf( g_dbg, "%u barrier %u.%u found\n", pkt_sz, ver_maj, ver_min );
 
          /* Send an acknowledgement and our name. */
          send_syn_msg(
@@ -271,39 +279,95 @@ int main() {
          break;
 
       case 1128874315: /* CIAK */
-         printf( "CIAK?\n" );
+         fprintf( g_dbg, "CIAK?\n" );
          break;
 
       case 1129467728: /* CROP */
-         printf( "CROP?\n" );
+         fprintf( g_dbg, "CROP?\n" );
          break;
 
       case 1128352854: /* "CALV" */
-         printf( "Ping... Pong!\n" );
+         fprintf( g_dbg, "Ping... Pong!\n" );
          send_syn_msg( sockfd, 4, "CALV%4iCNOP", 4 );
          break;
 
       case 1128877646: /* "CINN" */
-         printf( "in!\n" );
+         fprintf( g_dbg, "in!\n" );
          break;
 
       case 1145261136: /* DCLP */
-         printf( "clip in!\n" );
+         fprintf( g_dbg, "clip in!\n" );
          break;
 
       case 1145916758: /* DMMV */
-         printf( "mmv\n" );
+
+         memcpy( &mouse_x, &(sockbuf[8]), 2 );
+         mouse_x = swap_16( mouse_x );
+
+         memcpy( &mouse_y, &(sockbuf[10]), 2 );
+         mouse_y = swap_16( mouse_y );
+
+         fprintf( g_dbg, "mmv: %u, %u\n", mouse_x, mouse_y );
+
+#ifdef WIN32
+         SetCursorPos( mouse_x, mouse_y ); /*
+         mouse_event(
+            MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE,
+            mouse_x,
+            mouse_y,
+            0, 0 ); */
+#endif /* WIN32 */
+         break;
+
+      case 1145914446: /* DMDN */
+         switch( sockbuf[8] ) {
+         case 1: /* Left button */
+#ifdef WIN32
+            mouse_event(
+               MOUSEEVENTF_LEFTDOWN,
+               mouse_x, mouse_y, 0, 0 );
+#endif /* WIN32 */
+            break;
+
+         case 3: /* Right button */
+#ifdef WIN32
+            mouse_event(
+               MOUSEEVENTF_RIGHTDOWN,
+               mouse_x, mouse_y, 0, 0 );
+#endif /* WIN32 */
+            break;
+         }
+         break;
+
+      case 1145918800: /* DMUP */
+         switch( sockbuf[8] ) {
+         case 1: /* Left button */
+#ifdef WIN32
+            mouse_event(
+               MOUSEEVENTF_LEFTUP,
+               mouse_x, mouse_y, 0, 0 );
+#endif /* WIN32 */
+            break;
+
+         case 3: /* Right button */
+#ifdef WIN32
+            mouse_event(
+               MOUSEEVENTF_RIGHTUP,
+               mouse_x, mouse_y, 0, 0 );
+#endif /* WIN32 */
+            break;
+         }
          break;
 
       case 1129272660: /* COUT */
-         printf( "out!\n" );
+         fprintf( g_dbg, "out!\n" );
          break;
 
       case 1161969988: /* "EBAD" */
 
       default:
          /* Not found? Then what *did* we get? */
-         printf( "invalid packet:\n" );
+         fprintf( g_dbg, "invalid packet:\n" );
          dump_pkt( sockbuf, recv_sz );
 
          /* goto cleanup; */
@@ -314,12 +378,16 @@ int main() {
 cleanup:
 
    if( 0 < sockfd ) {
-      printf( "closing socket...\n" );
+      fprintf( g_dbg, "closing socket...\n" );
 #ifdef WIN32
       closesocket( sockfd );
 #else
       close( sockfd );
 #endif
+   }
+
+   if( NULL != g_dbg && stdout != g_dbg ) {
+      fclose( g_dbg );
    }
 
    return retval; 
