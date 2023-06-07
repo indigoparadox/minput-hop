@@ -160,7 +160,10 @@ int synproto_parse(
       mouse_x = 0,
       mouse_y = 0,
       screen_w = 0,
-      screen_h = 0;
+      screen_h = 0,
+      key_id = 0,
+      key_mod = 0,
+      key_btn = 0;
    int retval = 0;
 
    /* src/lib/barrier/protocol_types.cpp */
@@ -176,13 +179,11 @@ int synproto_parse(
    case 0x42617272: /* "Barr" */
 
       /* Grab the version out of the server packet. */
-      memcpy( &ver_maj, &(pkt_buf[11]), 2 );
-      ver_maj = swap_16( ver_maj );
+      ver_maj = synproto_exval_16( pkt_buf, 11 );
+      ver_min = synproto_exval_16( pkt_buf, 13 );
 
-      memcpy( &ver_min, &(pkt_buf[13]), 2 );
-      ver_min = swap_16( ver_min );
-
-      osio_printf( __FILE__, __LINE__, "barrier %u.%u found\n", ver_maj, ver_min );
+      osio_printf( __FILE__, __LINE__,
+         "barrier %u.%u found\n", ver_maj, ver_min );
 
       /* Send an acknowledgement and our name. */
       synproto_send(
@@ -190,7 +191,7 @@ int synproto_parse(
       
       break;
 
-   case 1363758662: /* QINF */
+   case 0x51494e46: /* QINF */
 
       osio_screen_get_w_h( &screen_w, &screen_h );
 
@@ -202,54 +203,69 @@ int synproto_parse(
 
       break;
 
-   case 1128874315: /* CIAK */
+   case 0x4349414b: /* CIAK */
       osio_printf( __FILE__, __LINE__, "CIAK?\n" );
       break;
 
-   case 1129467728: /* CROP */
+   case 0x43524f50: /* CROP */
       osio_printf( __FILE__, __LINE__, "CROP?\n" );
       break;
 
-   case 1128352854: /* "CALV" */
+   case 0x43414c56: /* "CALV" */
       osio_printf( __FILE__, __LINE__, "Ping... Pong!\n" );
       synproto_send( sockfd, 4, "CALV%4iCNOP", 4 );
       *calv_deadline = osio_time() + SYNPROTO_TIMEOUT_MS;
       break;
 
-   case 1128877646: /* "CINN" */
+   case 0x43494e4e: /* "CINN" */
       osio_printf( __FILE__, __LINE__, "in!\n" );
       break;
 
-   case 1145261136: /* DCLP */
+   case 0x44434c50: /* DCLP */
       osio_printf( __FILE__, __LINE__, "clip in!\n" );
       break;
 
-   case 1145916758: /* DMMV */
-
-      memcpy( &mouse_x, &(pkt_buf[8]), 2 );
-      mouse_x = swap_16( mouse_x );
-
-      memcpy( &mouse_y, &(pkt_buf[10]), 2 );
-      mouse_y = swap_16( mouse_y );
-
+   case 0x444d4d56: /* DMMV */
+      mouse_x = synproto_exval_16( pkt_buf, 8 );
+      mouse_y = synproto_exval_16( pkt_buf, 10 );
       osio_printf( __FILE__, __LINE__, "mmv: %u, %u\n", mouse_x, mouse_y );
-
       osio_mouse_move( mouse_x, mouse_y );
       break;
 
-   case 1145914446: /* DMDN */
+   case 0x444d444e: /* DMDN */
       osio_mouse_down( mouse_x, mouse_y, pkt_buf[8] );
       break;
 
-   case 1145918800: /* DMUP */
+   case 0x444d5550: /* DMUP */
       osio_mouse_up( mouse_x, mouse_y, pkt_buf[8] );
       break;
 
-   case 1129272660: /* COUT */
+   case 0x444b444e: /* DKDN */
+      key_id = synproto_exval_16( pkt_buf, 8 );
+      key_mod = synproto_exval_16( pkt_buf, 10 );
+      key_btn = synproto_exval_16( pkt_buf, 12 );
+      osio_key_down( key_id, key_mod, key_btn );
+      break;
+
+   case 0x444b5550: /* DKUP */
+      key_id = synproto_exval_16( pkt_buf, 8 );
+      key_mod = synproto_exval_16( pkt_buf, 10 );
+      key_btn = synproto_exval_16( pkt_buf, 12 );
+      osio_key_up( key_id, key_mod, key_btn );
+      break;
+
+   case 0x444b5250: /* DKRP */
+      key_id = synproto_exval_16( pkt_buf, 8 );
+      key_mod = synproto_exval_16( pkt_buf, 10 );
+      key_btn = synproto_exval_16( pkt_buf, 12 );
+      osio_key_rpt( key_id, key_mod, key_btn );
+      break;
+
+   case 0x434f5554: /* COUT */
       osio_printf( __FILE__, __LINE__, "out!\n" );
       break;
 
-   case 1161969988: /* "EBAD" */
+   case 0x45424144: /* "EBAD" */
 
    default:
       /* Not found? Then what *did* we get? */
