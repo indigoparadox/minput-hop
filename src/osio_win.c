@@ -39,37 +39,23 @@ void osio_mouse_move( int mouse_x, int mouse_y ) {
    UINT code = 0;
 
    SetCursorPos( mouse_x, mouse_y );
-   
-   /*
-   GetCursorPos( &new_pos );
-   cur_hwnd = WindowFromPoint( new_pos );
-
-   code = SendMessage( cur_hwnd, WM_NCHITTEST, 
-      0, MAKELPARAM( new_pos.x, new_pos.y ) );
-   
-   SendMessage( cur_hwnd, WM_SETCURSOR,
-      (WPARAM)cur_hwnd, MAKELPARAM( code, WM_MOUSEMOVE ) );
-   */
-
-   /* mouse_event(
-      MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE,
-      mouse_x,
-      mouse_y,
-      0, 0 ); */
-
 }
 
 void osio_mouse_down( int mouse_x, int mouse_y, int mouse_btn ) {
-   /* mouse_event(
+#ifdef MINPUT_OS_WIN32
+   mouse_event(
       OSIO_MOUSE_LEFT == mouse_btn ?
          MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_RIGHTDOWN,
-      mouse_x, mouse_y, 0, 0 ); */
+      mouse_x, mouse_y, 0, 0 );
+#endif /* MINPUT_OS_WIN32 */
 }
 
 void osio_mouse_up( int mouse_x, int mouse_y, int mouse_btn ) {
-   /* mouse_event(
+#ifdef MINPUT_OS_WIN32
+   mouse_event(
       OSIO_MOUSE_LEFT == mouse_btn ?
          MOUSEEVENTF_LEFTUP : MOUSEEVENTF_RIGHTUP,
-      mouse_x, mouse_y, 0, 0 ); */
+      mouse_x, mouse_y, 0, 0 );
+#endif /* MINPUT_OS_WIN32 */
 }
 

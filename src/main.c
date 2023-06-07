@@ -1,13 +1,13 @@
 
-#ifndef MINPUT_OS_WIN
+#if !defined( MINPUT_OS_WIN32 ) && !defined( MINPUT_OS_WIN16 )
 #include <stdlib.h>
 #include <unistd.h> /* close */
 #include <errno.h>
-#include <string.h>
 #endif /* !MINPUT_OS_WIN */
 
+#include <string.h> /* memset */
 #include <assert.h>
-#include <stdio.h>
+#include <stdio.h> /* fopen, fclose */
 
 #include "synproto.h"
 #include "osio.h"
@@ -25,7 +25,7 @@ int main() {
    char sockbuf[SOCKBUF_SZ + 1];
    ssize_t i = 0,
       recv_sz = 0;
-#ifdef MINPUT_OS_WIN
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    WSADATA wsa_data;
 #endif /* MINPUT_OS_WIN */
    size_t sockbuf_offset = 0;
@@ -39,10 +39,16 @@ int main() {
    g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
 
-#ifdef MINPUT_OS_WIN
    osio_printf( __FILE__, __LINE__, "starting up...\n" );
+#ifdef MINPUT_OS_WIN32
    retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
-   if( NO_ERROR != retval ) {
+   if( 0 != retval ) {
+      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
+      goto cleanup;
+   }
+#elif defined( MINPUT_OS_WIN16 )
+   retval = WSAStartup( 1, &wsa_data );
+   if( 0 != retval ) {
       osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
       goto cleanup;
    }
@@ -105,7 +111,7 @@ int main() {
             "timed out (%u past %u), restarting!\n",
             time_now, calv_deadline );
 
-#ifdef MINPUT_OS_WIN
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
          closesocket( sockfd );
 #else
          close( sockfd );
@@ -119,7 +125,7 @@ cleanup:
 
    if( 0 < sockfd ) {
       osio_printf( __FILE__, __LINE__, "closing socket...\n" );
-#ifdef MINPUT_OS_WIN
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
       closesocket( sockfd );
 #else
       close( sockfd );

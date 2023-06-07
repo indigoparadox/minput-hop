@@ -140,7 +140,7 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
 
    if( force_sz ) {  
       osio_printf( __FILE__, __LINE__, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
-      *buf_sz_p = swap_32( 4 );
+      *buf_sz_p = swap_32( (uint32_t)4 );
    } else {
       osio_printf( __FILE__, __LINE__, "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
       *buf_sz_p = swap_32( out_pos );
@@ -261,5 +261,6 @@ int synproto_parse(
       /* goto cleanup; */
    }
 
+   return retval;
 }
 

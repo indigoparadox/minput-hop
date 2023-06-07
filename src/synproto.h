@@ -2,12 +2,20 @@
 #ifndef SYNPROTO_H
 #define SYNPROTO_H
 
-#ifdef MINPUT_OS_WIN
-typedef unsigned long int uint32_t;
+#ifdef MINPUT_OS_WIN32
+typedef unsigned long uint32_t;
 typedef unsigned short uint16_t;
 typedef unsigned char uint8_t;
 typedef int ssize_t;
-#  include <winsock2.h>
+#  include <winsock.h>
+#  include <windows.h>
+#elif defined MINPUT_OS_WIN16
+typedef unsigned long uint32_t;
+typedef unsigned short uint16_t;
+typedef unsigned char uint8_t;
+typedef int ssize_t;
+typedef unsigned int size_t;
+#  include <winsock.h>
 #  include <windows.h>
 #else
 #  include <stdint.h>
