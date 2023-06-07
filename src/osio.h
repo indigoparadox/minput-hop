@@ -5,6 +5,8 @@
 #define OSIO_MOUSE_LEFT 0x01
 #define OSIO_MOUSE_RIGHT 0x03
 
+void osio_screen_get_w_h( unsigned short* screen_w, unsigned short* screen_h );
+
 void osio_mouse_move( int mouse_x, int mouse_y );
 
 void osio_mouse_down( int mouse_x, int mouse_y, int mouse_btn );

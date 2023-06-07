@@ -157,7 +157,9 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
    uint16_t ver_maj = 0,
       ver_min = 0,
       mouse_x = 0,
-      mouse_y = 0;
+      mouse_y = 0,
+      screen_w = 0,
+      screen_h = 0;
 
    /* src/lib/barrier/protocol_types.cpp */
 
@@ -189,10 +191,14 @@ void synproto_parse( int sockfd, const char* pkt_buf, size_t pkt_buf_sz ) {
       break;
 
    case 1363758662: /* QINF */
+
+      osio_screen_get_w_h( &screen_w, &screen_h );
+
+      fprintf( g_dbg, "sw: %u, sh: %u\n", screen_w, screen_h );
       
       synproto_send(
          sockfd, 0, "DINF%2i%2i%2i%2i%2i%2i%2i",
-         0, 0, 640, 480, 0, 0, 0 );
+         0, 0, screen_w, screen_h, 0, 0, 0 );
 
       break;
 
