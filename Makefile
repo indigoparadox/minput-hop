@@ -35,5 +35,5 @@ obj/unix/%.o: %.c
 	$(CC) $(CFLAGS) -c -o "$@" "$<"
 
 clean:
-	rm -rf obj minhop
+	rm -rf obj minhop minhop*.exe
 

@@ -1,5 +1,5 @@
 *.o
 minhop
-minhop32.exe
+minhop*.exe
 dbg.txt
 *.err
