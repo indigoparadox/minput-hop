@@ -82,7 +82,7 @@ int main() {
             osio_printf( __FILE__, __LINE__, "connected\n" );
          }
 
-         calv_deadline = osio_time() + SYNPROTO_TIMEOUT_MS;
+         calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       }
 
       /* Receive handshake opener. */
@@ -98,12 +98,13 @@ int main() {
          continue;
       }
 
-      retval = synproto_parse( sockfd, sockbuf, recv_sz, &calv_deadline );
+      retval = synproto_parse_and_reply(
+         sockfd, sockbuf, recv_sz, &calv_deadline );
 
       memset( sockbuf, '\0', SOCKBUF_SZ + 1 );
       sockbuf_offset = 0;
 
-      time_now = osio_time();
+      time_now = osio_get_time();
       if( time_now > calv_deadline ) {
          /* Too long since the last keepalive! Restart! */
 

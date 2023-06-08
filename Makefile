@@ -4,11 +4,11 @@
 SOURCES := src/main.c src/synproto.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
-minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -we
+minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -we -DDEBUG
 
-minhop16.exe: CFLAGS := -bt=win -i=$(WATCOM)/h/win -DMINPUT_OS_WIN16 -we
+minhop16.exe: CFLAGS := -bt=win -i=$(WATCOM)/h/win -DMINPUT_OS_WIN16 -we -DDEBUG
 
-minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined 
+minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG
 
 all: minhop minhop32.exe minhop16.exe
 
