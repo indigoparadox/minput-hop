@@ -8,17 +8,14 @@
 #include <string.h> /* memset */
 #include <assert.h>
 #include <stdio.h> /* fopen, fclose */
+#include <stdlib.h> /* atoi */
 
 #include "synproto.h"
 #include "osio.h"
 
-#define SCREEN_NAME mintest
-#define SERVER_IP "192.168.250.166"
-#define SERVER_PORT 24800
-
 extern FILE* g_dbg;
 
-int main() {
+int main( int argc, char* argv[] ) {
    int sockfd = 0;
    struct sockaddr_in servaddr;
    int retval = 0;
@@ -31,6 +28,9 @@ int main() {
    size_t sockbuf_offset = 0;
    uint32_t calv_deadline = 0,
       time_now = 0;
+   int server_port = 24800;
+   const char* server_addr;
+   const char* client_name;
 
    assert( 4 == sizeof( uint32_t ) );
    assert( 2 == sizeof( uint16_t ) );
@@ -39,6 +39,27 @@ int main() {
    g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
 
+   /* Very simple arg parser. */
+   if( 3 <= argc ) {
+      if( 4 <= argc ) {
+         server_port = atoi( argv[2] );
+         osio_printf( __FILE__, __LINE__, "server port: %d\n", server_port );
+      }
+
+      server_addr = argv[2];
+      osio_printf( __FILE__, __LINE__, "server address: %s\n", server_addr );
+
+      client_name = argv[1];
+      osio_printf( __FILE__, __LINE__, "client name: %s\n", client_name );
+      
+   } else {
+      osio_printf( __FILE__, __LINE__,
+         "usage: minhop <name> <server> [port]\n" );
+      retval = 1;
+      goto cleanup;
+   }
+
+   /* Get to actual startup! */
    osio_printf( __FILE__, __LINE__, "starting up...\n" );
 #ifdef MINPUT_OS_WIN32
    retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
@@ -57,8 +78,8 @@ int main() {
    /* Resolve server address. */
    memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
    servaddr.sin_family = AF_INET;
-   servaddr.sin_port = htons( SERVER_PORT );
-   servaddr.sin_addr.s_addr = inet_addr( SERVER_IP );
+   servaddr.sin_port = htons( server_port );
+   servaddr.sin_addr.s_addr = inet_addr( server_addr );
 
    do {
 
@@ -99,7 +120,7 @@ int main() {
       }
 
       retval = synproto_parse_and_reply(
-         sockfd, sockbuf, recv_sz, &calv_deadline );
+         sockfd, sockbuf, recv_sz, &calv_deadline, client_name );
 
       memset( sockbuf, '\0', SOCKBUF_SZ + 1 );
       sockbuf_offset = 0;

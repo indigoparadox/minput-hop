@@ -157,7 +157,8 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
 }
 
 int synproto_parse_and_reply(
-   int sockfd, const char* pkt_buf, size_t pkt_buf_sz, uint32_t* calv_deadline_p
+   int sockfd, const char* pkt_buf, size_t pkt_buf_sz,
+   uint32_t* calv_deadline_p, const char* client_name
 ) {
    uint32_t* pkt_type_p = (uint32_t*)&(pkt_buf[4]);
    uint16_t ver_maj = 0,
@@ -201,7 +202,7 @@ int synproto_parse_and_reply(
 
       /* Send an acknowledgement and our name. */
       synproto_send(
-         sockfd, 0, "Barrier%2i%2i%4i%s", ver_maj, ver_min, 7, "mintest" );
+         sockfd, 0, "Barrier%2i%2i%4i%s", ver_maj, ver_min, 7, client_name );
       
       break;
 

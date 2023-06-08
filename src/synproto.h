@@ -115,10 +115,11 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... );
  *                        next osio_get_time() in ms by which a keepalive must
  *                        be received from the server in order for us not to
  *                        disconnect.
+ * \param client_name The name of this client while connecting to the server.
  */
 int synproto_parse_and_reply(
    int sockfd, const char* pkt_buf, size_t pkt_buf_sz,
-   uint32_t* calv_deadline_p
+   uint32_t* calv_deadline_p, const char* client_name
 );
 
 #endif /* SYNPROTO_H */
