@@ -792,6 +792,7 @@ WARN_LOGFILE           =
 
 INPUT                  = \
    src/synproto.h \
+   src/osio.h \
    README.md
 
 # This tag can be used to specify the character encoding of the source files
