@@ -203,6 +203,8 @@ int synproto_parse_and_reply(
       /* Send an acknowledgement and our name. */
       synproto_send(
          sockfd, 0, "Barrier%2i%2i%4i%s", ver_maj, ver_min, 7, client_name );
+
+      *calv_deadline_p = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       
       break;
 
