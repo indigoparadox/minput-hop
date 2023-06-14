@@ -1,0 +1,19 @@
+<map id="synproto.h" name="synproto.h">
+<area shape="rect" id="Node000001" title="Tools for dealing with the Synergy protocol." alt="" coords="333,5,413,31"/>
+<area shape="rect" id="Node000002" title=" " alt="" coords="5,79,72,105"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="333,30,87,81,86,76,332,25"/>
+<area shape="rect" id="Node000003" title=" " alt="" coords="96,79,160,105"/>
+<area shape="poly" id="edge2_Node000001_Node000003" title=" " alt="" coords="333,34,174,80,173,75,332,29"/>
+<area shape="rect" id="Node000004" title=" " alt="" coords="184,79,251,105"/>
+<area shape="poly" id="edge3_Node000001_Node000004" title=" " alt="" coords="348,34,258,75,256,70,346,29"/>
+<area shape="rect" id="Node000005" title=" " alt="" coords="275,79,362,105"/>
+<area shape="poly" id="edge4_Node000001_Node000005" title=" " alt="" coords="366,33,339,69,334,65,362,30"/>
+<area shape="rect" id="Node000006" title=" " alt="" coords="386,79,470,105"/>
+<area shape="poly" id="edge5_Node000001_Node000006" title=" " alt="" coords="384,30,412,65,408,69,380,33"/>
+<area shape="rect" id="Node000007" title=" " alt="" coords="494,79,588,105"/>
+<area shape="poly" id="edge6_Node000001_Node000007" title=" " alt="" coords="403,29,500,70,498,75,401,34"/>
+<area shape="rect" id="Node000008" title=" " alt="" coords="613,79,694,105"/>
+<area shape="poly" id="edge7_Node000001_Node000008" title=" " alt="" coords="415,27,598,74,597,79,413,32"/>
+<area shape="rect" id="Node000009" title=" " alt="" coords="718,79,786,105"/>
+<area shape="poly" id="edge8_Node000001_Node000009" title=" " alt="" coords="414,23,540,44,704,76,703,81,539,49,413,28"/>
+</map>
