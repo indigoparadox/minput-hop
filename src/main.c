@@ -20,12 +20,15 @@ int main( int argc, char* argv[] ) {
    struct sockaddr_in servaddr;
    int retval = 0;
    char sockbuf[SOCKBUF_SZ + 1];
+   char pkt_buf[SOCKBUF_SZ + 1];
+   uint32_t pkt_buf_sz = 0,
+      pkt_claim_sz = 0;
    ssize_t i = 0,
+      j = 0,
       recv_sz = 0;
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    WSADATA wsa_data;
 #endif /* MINPUT_OS_WIN */
-   size_t sockbuf_offset = 0;
    uint32_t calv_deadline = 0,
       time_now = 0;
    int server_port = 24800;
@@ -106,25 +109,75 @@ int main( int argc, char* argv[] ) {
          calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       }
 
-      /* Receive handshake opener. */
-      recv_sz = recv(
-         sockfd, &(sockbuf[sockbuf_offset]), SOCKBUF_SZ - sockbuf_offset, 0 );
+      /* Receive more data from the socket. */
+      recv_sz = recv( sockfd, sockbuf, SOCKBUF_SZ, 0 );
       if( 0 >= recv_sz ) {
-         /* Connection died. */
-         continue;
-      } else if( 4 == recv_sz ) {
-         /* The size was split off the rest of the packet? Wait for the rest!
-          */
-         sockbuf_offset += recv_sz;
+         /* Connection died. Restart loop so we can try to reconnect. */
          continue;
       }
 
-      retval = synproto_parse_and_reply(
-         sockfd, sockbuf, recv_sz, &calv_deadline, client_name );
+      osio_printf( __FILE__, __LINE__, "recv sz: %lu\n",
+         recv_sz );
 
-      memset( sockbuf, '\0', SOCKBUF_SZ + 1 );
-      sockbuf_offset = 0;
+      /* Dump the received data into the packet buffer. */
+      if( pkt_buf_sz + recv_sz >= SOCKBUF_SZ ) {
+         osio_printf( __FILE__, __LINE__, "packet too large! (%lu bytes)\n",
+            pkt_buf_sz + recv_sz );
+         retval = 1;
+         goto cleanup;
+      }
 
+      /* Append the received data to the packet buffer. */
+      memcpy( &(pkt_buf[pkt_buf_sz]), sockbuf, recv_sz );
+      pkt_buf_sz += recv_sz;
+      osio_printf( __FILE__, __LINE__,
+         "copied packet(s) to pkt buffer; new pkt buffer sz: %lu\n",
+         pkt_buf_sz );
+
+#ifdef DEBUG_PACKETS_IN
+      osio_printf( __FILE__, __LINE__, "new pkt buffer: " );
+      for( j = 0 ; recv_sz > j ; j++ ) {
+         osio_printf( __FILE__, __LINE__, "0x%02x ('%c') ", pkt_buf[j] );
+      }
+      osio_printf( __FILE__, __LINE__, "\n" );
+#endif /* DEBUG_PACKETS_IN */
+
+      /* Process packets in the packet buffer until we run out. */
+      do {
+         /* How big does the packet claim to be? */
+         pkt_claim_sz = swap_32( *((uint32_t*)pkt_buf) ) + 4;
+         osio_printf( __FILE__, __LINE__,
+            "recv announced size: %lu (0x%08x)\n",
+            pkt_claim_sz, pkt_claim_sz );
+
+         if( pkt_buf_sz < pkt_claim_sz ) {
+            /* The packet is too small! Let's try again to fetch the rest! */
+            break;
+         }
+
+         /* Parse this packet, taking its claim at face value. */
+         retval = synproto_parse_and_reply(
+            sockfd, pkt_buf, pkt_claim_sz, &calv_deadline, client_name );
+
+         /* Remove the packet size from the packet buffer size. */
+         pkt_buf_sz -= pkt_claim_sz;
+         osio_printf( __FILE__, __LINE__,
+            "removed packet; new pkt buffer sz: %lu\n",
+            pkt_buf_sz );
+
+         /* Move the remaining contents of packet buffer down to the start. */
+         for( j = 0 ; pkt_buf_sz > j ; j++ ) {
+            if( j + pkt_claim_sz >= SOCKBUF_SZ ) {
+               osio_printf( __FILE__, __LINE__, "pkt offset too large!\n" );
+               goto cleanup;
+            }
+            pkt_buf[j] = pkt_buf[j + pkt_claim_sz];
+         }
+
+         /* Keep going while we have valid packets left to process. */
+      } while( pkt_buf_sz > 0 );
+
+      /* Check how we're doing for keepalives. */
       time_now = osio_get_time();
       if( time_now > calv_deadline ) {
          /* Too long since the last keepalive! Restart! */
