@@ -5,6 +5,10 @@
 #define SERVER_ADDR_SZ_MAX 64
 #define CLIENT_NAME_SZ_MAX 64
 
+#define MINHOP_ERR_RECV 2
+#define MINHOP_ERR_PROTOCOL 4
+#define MINHOP_ERR_OVERFLOW 8
+
 #include "intplat.h"
 
 struct MINHOP_CFG {
@@ -32,6 +36,9 @@ int minhop_parse_args( int argc, char* argv[], struct MINHOP_CFG* config );
 int minhop_network_setup( struct MINHOP_CFG* config );
 
 int minhop_network_connect( struct MINHOP_CFG* config );
+
+int minhop_process_packets(
+   struct MINHOP_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz );
 
 #endif /* !MINHOP_H */
 

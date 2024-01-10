@@ -302,7 +302,7 @@ int synproto_parse_and_reply(
       osio_printf( __FILE__, __LINE__, "invalid packet:\n" );
       synproto_dump( pkt_buf, pkt_buf_sz );
 
-      retval = 1;
+      retval = MINHOP_ERR_PROTOCOL;
 
       /* goto cleanup; */
    }
