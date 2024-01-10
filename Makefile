@@ -1,7 +1,7 @@
 
 # vim: ft=make noexpandtab
 
-SOURCES := src/main.c src/synproto.c
+SOURCES := src/main.c src/synproto.c src/minhop.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
 minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -we -DDEBUG
@@ -12,8 +12,11 @@ minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -D
 
 all: minhop minhop32.exe minhop16.exe
 
-minhop32.exe: $(addprefix obj/win32/,$(OBJECTS)) obj/win32/src/osio_win.o
-	wlink system nt name minhop32 lib wsock32 lib winmm fil {$^}
+obj/win32/src/minhop.res: src/minhop.rc
+	wrc -r $< -bt=nt -fo=$@
+
+minhop32.exe: $(addprefix obj/win32/,$(OBJECTS)) obj/win32/src/osio_win.o | obj/win32/src/minhop.res
+	wlink system nt name minhop32 lib wsock32 lib winmm fil {$^} resource obj/win32/src/minhop.res
 
 minhop16.exe: $(addprefix obj/win16/,$(OBJECTS)) obj/win16/src/osio_win.o
 	wlink system windows name minhop16 lib winsock lib mmsystem fil {$^}

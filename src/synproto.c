@@ -157,8 +157,7 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
 }
 
 int synproto_parse_and_reply(
-   int sockfd, const char* pkt_buf, size_t pkt_buf_sz,
-   uint32_t* calv_deadline_p, const char* client_name
+   struct MINHOP_CFG* config, const char* pkt_buf, size_t pkt_buf_sz
 ) {
    uint32_t* pkt_type_p = (uint32_t*)&(pkt_buf[4]);
    uint16_t ver_maj = 0,
@@ -202,9 +201,10 @@ int synproto_parse_and_reply(
 
       /* Send an acknowledgement and our name. */
       synproto_send(
-         sockfd, 0, "Barrier%2i%2i%4i%s", ver_maj, ver_min, 7, client_name );
+         config->socket_fd, 0, "Barrier%2i%2i%4i%s",
+         ver_maj, ver_min, 7, config->client_name );
 
-      *calv_deadline_p = osio_get_time() + SYNPROTO_TIMEOUT_MS;
+      config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       
       break;
 
@@ -217,7 +217,7 @@ int synproto_parse_and_reply(
 #endif /* DEBUG */
 
       synproto_send(
-         sockfd, 0, "DINF%2i%2i%2i%2i%2i%2i%2i",
+         config->socket_fd, 0, "DINF%2i%2i%2i%2i%2i%2i%2i",
          0, 0, screen_w, screen_h, 0, 0, 0 );
 
       break;
@@ -235,8 +235,8 @@ int synproto_parse_and_reply(
    case 0x43414c56: /* "CALV" */
       /* Keepalive received, so respond! */
       osio_printf( __FILE__, __LINE__, "Ping... Pong!\n" );
-      synproto_send( sockfd, 4, "CALV%4iCNOP", 4 );
-      *calv_deadline_p = osio_get_time() + SYNPROTO_TIMEOUT_MS;
+      synproto_send( config->socket_fd, 4, "CALV%4iCNOP", 4 );
+      config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       break;
 
    case 0x43494e4e: /* "CINN" */

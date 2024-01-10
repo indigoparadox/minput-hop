@@ -1,23 +1,24 @@
 
-#if !defined( MINPUT_OS_WIN32 ) && !defined( MINPUT_OS_WIN16 )
-#include <stdlib.h>
-#include <unistd.h> /* close */
-#include <errno.h>
+#if defined( MINPUT_OS_WIN32 ) || defined( MINPUT_OS_WIN16 )
+#  include <windows.h>
+#else
+#  include <stdlib.h>
+#  include <unistd.h>
 #endif /* !MINPUT_OS_WIN */
 
-#include <string.h> /* memset */
+#include <string.h> /* memset, strncpy */
 #include <assert.h>
 #include <stdio.h> /* fopen, fclose */
-#include <stdlib.h> /* atoi */
 
-#include "synproto.h"
-#include "osio.h"
+#include "minhop.h"
+
+#if defined( MINPUT_OS_WIN32 )
+#include "guiwin32.h"
+#endif /* MINPUT_OS_WIN32 */
 
 extern FILE* g_dbg;
 
 int main( int argc, char* argv[] ) {
-   int sockfd = 0;
-   struct sockaddr_in servaddr;
    int retval = 0;
    char sockbuf[SOCKBUF_SZ + 1];
    char pkt_buf[SOCKBUF_SZ + 1];
@@ -26,14 +27,8 @@ int main( int argc, char* argv[] ) {
    ssize_t i = 0,
       j = 0,
       recv_sz = 0;
-#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
-   WSADATA wsa_data;
-#endif /* MINPUT_OS_WIN */
-   uint32_t calv_deadline = 0,
-      time_now = 0;
-   int server_port = 24800;
-   const char* server_addr;
-   const char* client_name;
+   uint32_t time_now = 0;
+   struct MINHOP_CFG config;
 
    assert( 4 == sizeof( uint32_t ) );
    assert( 2 == sizeof( uint16_t ) );
@@ -42,75 +37,38 @@ int main( int argc, char* argv[] ) {
    g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
 
-   /* Very simple arg parser. */
-   if( 3 <= argc ) {
-      if( 4 <= argc ) {
-         server_port = atoi( argv[2] );
-         osio_printf( __FILE__, __LINE__, "server port: %d\n", server_port );
-      }
-
-      server_addr = argv[2];
-      osio_printf( __FILE__, __LINE__, "server address: %s\n", server_addr );
-
-      client_name = argv[1];
-      osio_printf( __FILE__, __LINE__, "client name: %s\n", client_name );
-      
-   } else {
-      osio_printf( __FILE__, __LINE__,
-         "usage: minhop <name> <server> [port]\n" );
-      retval = 1;
+   memset( &config, '\0', sizeof( struct MINHOP_CFG ) );
+   retval = minhop_parse_args( argc, argv, &config );
+   if( 0 != retval ) {
       goto cleanup;
    }
+
+   /* retval = minhop_gui_setup();
+   if( 0 != retval ) {
+      goto cleanup;
+   } */
 
    /* Get to actual startup! */
    osio_printf( __FILE__, __LINE__, "starting up...\n" );
-#ifdef MINPUT_OS_WIN32
-   retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
-   if( 0 != retval ) {
-      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
-      goto cleanup;
-   }
-#elif defined( MINPUT_OS_WIN16 )
-   retval = WSAStartup( 1, &wsa_data );
-   if( 0 != retval ) {
-      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
-      goto cleanup;
-   }
-#endif /* MINPUT_OS_WIN */
    
-   /* Resolve server address. */
-   memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
-   servaddr.sin_family = AF_INET;
-   servaddr.sin_port = htons( server_port );
-   servaddr.sin_addr.s_addr = inet_addr( server_addr );
+   retval = minhop_network_setup( &config );
+   if( 0 != retval ) {
+      goto cleanup;
+   }
+
+   osio_printf( __FILE__, __LINE__, "starting main loop...\n" );
 
    do {
 
-      if( 0 == sockfd ) {
-         /* Open socket. */
-         osio_printf( __FILE__, __LINE__,
-            "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
-         sockfd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-         if( -1 == sockfd ) {
-            perror( "socket" );
+      if( 0 == config.socket_fd ) {
+         retval = minhop_network_connect( &config );
+         if( 0 != retval ) {
             goto cleanup;
          }
-
-         /* Connect socket. */
-         retval = connect(
-            sockfd, (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
-         if( retval ) {
-            perror( "connect" );
-            goto cleanup;
-         } else {
-            osio_printf( __FILE__, __LINE__, "connected\n" );
-         }
-
-         calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       }
 
       /* Receive more data from the socket. */
-      recv_sz = recv( sockfd, sockbuf, SOCKBUF_SZ, 0 );
+      recv_sz = recv( config.socket_fd, sockbuf, SOCKBUF_SZ, 0 );
       if( 0 >= recv_sz ) {
          /* Connection died. Restart loop so we can try to reconnect. */
          continue;
@@ -156,8 +114,7 @@ int main( int argc, char* argv[] ) {
          }
 
          /* Parse this packet, taking its claim at face value. */
-         retval = synproto_parse_and_reply(
-            sockfd, pkt_buf, pkt_claim_sz, &calv_deadline, client_name );
+         retval = synproto_parse_and_reply( &config, pkt_buf, pkt_claim_sz );
 
          /* Remove the packet size from the packet buffer size. */
          pkt_buf_sz -= pkt_claim_sz;
@@ -179,37 +136,39 @@ int main( int argc, char* argv[] ) {
 
       /* Check how we're doing for keepalives. */
       time_now = osio_get_time();
-      if( time_now > calv_deadline ) {
+      if( time_now > config.calv_deadline ) {
          /* Too long since the last keepalive! Restart! */
 
          osio_printf( __FILE__, __LINE__,
             "timed out (%u past %u), restarting!\n",
-            time_now, calv_deadline );
+            time_now, config.calv_deadline );
 
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
-         closesocket( sockfd );
+         closesocket( config.socket_fd );
 #else
-         close( sockfd );
+         close( config.socket_fd );
 #endif /* MINPUT_OS_WIN */
-         sockfd = 0;
+         config.socket_fd = 0;
       }
 
    } while( 0 <= recv_sz );
 
 cleanup:
 
-   if( 0 < sockfd ) {
+   if( 0 < config.socket_fd ) {
       osio_printf( __FILE__, __LINE__, "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
-      closesocket( sockfd );
+      closesocket( config.socket_fd );
 #else
-      close( sockfd );
+      close( config.socket_fd );
 #endif /* MINPUT_OS_WIN */
    }
 
    if( NULL != g_dbg && stdout != g_dbg ) {
       fclose( g_dbg );
    }
+
+   /* minhop_gui_cleanup(); */
 
    return retval; 
 }

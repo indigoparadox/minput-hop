@@ -16,13 +16,15 @@
 #  include <winsock.h>
 #  include <windows.h>
 #else
-#  include <stdint.h>
 #  include <stddef.h>
 #  include <sys/types.h>
 #  include <netinet/in.h>
 #  include <sys/socket.h>
 #  include <arpa/inet.h>
+#  include <errno.h>
 #endif /* MINPUT_OS_WIN */
+
+#include "minhop.h"
 
 #include <stdarg.h>
 
@@ -107,20 +109,11 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... );
 /**
  * \brief Given a buffer with a string from the Synergy server, parse it
  *        and respond or simulate OS activity as directed.
- * \param sockfd The socket identifier/handle on which the Synergy server is
- *               connected.
  * \param pkt_buf The buffer in which the server transmission is stored.
  * \param pkt_buf_sz The size of pkt_buf.
- * \param calv_deadline_p A pointer to a 32-bit integer containing the next
- *                        next osio_get_time() in ms by which a keepalive must
- *                        be received from the server in order for us not to
- *                        disconnect.
- * \param client_name The name of this client while connecting to the server.
  */
 int synproto_parse_and_reply(
-   int sockfd, const char* pkt_buf, size_t pkt_buf_sz,
-   uint32_t* calv_deadline_p, const char* client_name
-);
+   struct MINHOP_CFG* config, const char* pkt_buf, size_t pkt_buf_sz );
 
 #endif /* SYNPROTO_H */
 
