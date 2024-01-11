@@ -6,6 +6,7 @@
 #include <stdlib.h> /* atoi */
 
 #include "osio.h"
+#include "netio.h"
 
 extern FILE* g_dbg;
 

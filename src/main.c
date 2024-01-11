@@ -10,15 +10,15 @@
 #include <assert.h>
 #include <stdio.h> /* fopen, fclose */
 
-#include "minhop.h"
-
-#if defined( MINPUT_OS_WIN32 )
-#include "guiwin32.h"
-#endif /* MINPUT_OS_WIN32 */
+#include "netio.h"
 
 extern FILE* g_dbg;
 
+#ifdef MINPUT_OS_WIN32
+int trad_main( int argc, char* argv[] ) {
+#else
 int main( int argc, char* argv[] ) {
+#endif /* MINPUT_OS_WIN32 */
    int retval = 0;
    ssize_t i = 0;
    uint32_t time_now = 0;
@@ -47,7 +47,7 @@ int main( int argc, char* argv[] ) {
    /* Get to actual startup! */
    osio_printf( __FILE__, __LINE__, "starting up...\n" );
    
-   retval = minhop_network_setup( &config );
+   retval = netio_setup( &config );
    if( 0 != retval ) {
       goto cleanup;
    }
@@ -56,13 +56,15 @@ int main( int argc, char* argv[] ) {
 
    do {
 
+      /* Ensure we are connected; reconnect if not. */
       if( 0 == config.socket_fd ) {
-         retval = minhop_network_connect( &config );
+         retval = netio_connect( &config );
          if( 0 != retval ) {
             goto cleanup;
          }
       }
 
+      /* Process packets and handle protocol/input events. */
       retval = minhop_process_packets( &config, pkt_buf, &pkt_buf_sz );
       if( MINHOP_ERR_RECV == retval ) {
          /* Not a show-stopper, but try to reconnect! */
@@ -77,17 +79,10 @@ int main( int argc, char* argv[] ) {
       time_now = osio_get_time();
       if( time_now > config.calv_deadline ) {
          /* Too long since the last keepalive! Restart! */
-
          osio_printf( __FILE__, __LINE__,
             "timed out (%u past %u), restarting!\n",
             time_now, config.calv_deadline );
-
-#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
-         closesocket( config.socket_fd );
-#else
-         close( config.socket_fd );
-#endif /* MINPUT_OS_WIN */
-         config.socket_fd = 0;
+         netio_disconnect( &config );
       }
 
       osio_printf( __FILE__, __LINE__,
@@ -98,19 +93,14 @@ int main( int argc, char* argv[] ) {
 cleanup:
 
    if( 0 < config.socket_fd ) {
-      osio_printf( __FILE__, __LINE__, "closing socket...\n" );
-#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
-      closesocket( config.socket_fd );
-#else
-      close( config.socket_fd );
-#endif /* MINPUT_OS_WIN */
+      netio_disconnect( &config );
    }
 
    if( NULL != g_dbg && stdout != g_dbg ) {
       fclose( g_dbg );
    }
 
-   /* minhop_gui_cleanup(); */
+   /* osio_ui_cleanup(); */
 
    return retval; 
 }

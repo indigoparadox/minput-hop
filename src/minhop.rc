@@ -1,0 +1,5 @@
+
+#include "minhopr.h"
+
+ID_MINHOP_ICO ICON "src/minhop.ico"
+

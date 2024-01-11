@@ -4,10 +4,113 @@
 
 #include "osio.h"
 
+#include <shellapi.h>
+
+#include "minhopr.h"
+
 #include <stdio.h> /* vprintf, FILE */
 #include <string.h> /* memset */
 
 FILE* g_dbg = NULL;
+
+UINT WM_TASKBARCREATED = 0;
+
+HWND g_window = NULL;
+HINSTANCE g_instance = NULL;
+int g_cmd_show = 0;
+NOTIFYICONDATA g_notify_icon_data;
+MSG g_message;
+
+LRESULT CALLBACK WndProc(
+   HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
+) {
+
+   return DefWindowProc( hWnd, message, wParam, lParam );
+}
+
+int osio_ui_setup() {
+   int retval = 0;
+   WNDCLASS wc = { 0 };
+
+   WM_TASKBARCREATED = RegisterWindowMessage( "TaskbarCreated" );
+
+   /* Create window class. */
+   wc.lpfnWndProc = (WNDPROC)&WndProc;
+   wc.hInstance = g_instance;
+   wc.hIcon = LoadIcon( g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
+   wc.hCursor = LoadCursor( 0, IDC_ARROW );
+   wc.hbrBackground = (HBRUSH)( COLOR_BTNFACE + 1 );
+   wc.lpszClassName = "MinhopWindowClass";
+
+   if( !RegisterClass( &wc ) ) {
+      /* TODO: MessageBox */
+      goto cleanup;
+   }
+
+   g_window = CreateWindowEx(
+      0,
+      "MinhopWindowClass",
+      TEXT( "Minput Hop" ),
+      WS_OVERLAPPEDWINDOW,
+      CW_USEDEFAULT,
+      CW_USEDEFAULT,
+      100,
+      100,
+      NULL,
+      NULL,
+      g_instance,
+      NULL
+   );
+
+   if( !g_window ) {
+      /* TODO: MessageBox */
+      goto cleanup;
+   }
+
+   memset( &g_notify_icon_data, '\0', sizeof( NOTIFYICONDATA ) );
+
+   g_notify_icon_data.cbSize = sizeof( NOTIFYICONDATA );
+   g_notify_icon_data.hWnd = g_window;
+   g_notify_icon_data.uID = ID_NOTIFY_ICON;
+   g_notify_icon_data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
+   g_notify_icon_data.hIcon = LoadIcon(
+      g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
+   strcpy( g_notify_icon_data.szTip, "Minput Hop" );
+
+   Shell_NotifyIcon( NIM_ADD, &g_notify_icon_data );
+
+   ShowWindow( g_window, g_cmd_show );
+
+cleanup:
+
+   return retval;
+}
+
+void osio_ui_cleanup() {
+   Shell_NotifyIcon( NIM_DELETE, &g_notify_icon_data );
+}
+
+int osio_ui_loop() {
+   int retval = 0;
+
+   retval = GetMessage( &g_message, NULL, 0, 0 );
+   if( retval ) {
+      TranslateMessage( &g_message );
+      DispatchMessage( &g_message );
+   }
+
+   return retval;
+}
+
+int trad_main( int argc, char* argv[] );
+
+int WINAPI WinMain(
+   HINSTANCE instance, HINSTANCE prev_instance, LPSTR args, int cmd_show
+) {
+   g_instance = instance;
+   g_cmd_show = cmd_show;
+   return trad_main( __argc, __argv );
+}
 
 void osio_printf( const char* file, int line, const char* fmt, ... ) {
    va_list args;

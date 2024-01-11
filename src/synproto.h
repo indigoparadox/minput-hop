@@ -24,8 +24,6 @@
 #  include <errno.h>
 #endif /* MINPUT_OS_WIN */
 
-#include "minhop.h"
-
 #include <stdarg.h>
 
 #ifndef SOCKBUF_SZ

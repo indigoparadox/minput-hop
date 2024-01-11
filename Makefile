@@ -1,7 +1,7 @@
 
 # vim: ft=make noexpandtab
 
-SOURCES := src/main.c src/synproto.c src/minhop.c
+SOURCES := src/main.c src/synproto.c src/netio.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
 minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -we -DDEBUG

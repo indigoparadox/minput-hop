@@ -1,5 +1,6 @@
 
-#include "minhop.h"
+#include "netio.h"
+#include "minerr.h"
 
 #include <string.h> /* memset, strncpy */
 #include <stdlib.h> /* atoi */
@@ -36,7 +37,7 @@ int minhop_parse_args( int argc, char* argv[], struct MINHOP_CFG* config ) {
 
 }
 
-int minhop_network_setup( struct MINHOP_CFG* config ) {
+int netio_setup( struct MINHOP_CFG* config ) {
    int retval = 0;
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    WSADATA wsa_data;
@@ -63,7 +64,7 @@ cleanup:
    return retval;
 }
 
-int minhop_network_connect( struct MINHOP_CFG* config ) {
+int netio_connect( struct MINHOP_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
 
@@ -180,5 +181,15 @@ int minhop_process_packets(
 cleanup:
 
    return retval;
+}
+
+void netio_disconnect( struct MINHOP_CFG* config ) {
+   osio_printf( __FILE__, __LINE__, "closing socket...\n" );
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
+   closesocket( config->socket_fd );
+#else
+   close( config->socket_fd );
+#endif /* MINPUT_OS_WIN */
+   config->socket_fd = 0;
 }
 
