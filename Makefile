@@ -4,10 +4,10 @@
 SOURCES := src/main.c src/synproto.c src/netio.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
-minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -we -DDEBUG
+minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw -we -DDEBUG
 RES_PATH_W32 := obj/win32/src/minhop.res
 
-minhop16.exe: CFLAGS := -bt=windows -ml -i=$(WATCOM)/h/win -DMINPUT_OS_WIN16 -we -DDEBUG
+minhop16.exe: CFLAGS := -bt=windows -ml -i=$(WATCOM)/h/win -hw -DMINPUT_OS_WIN16 -we -DDEBUG
 RES_PATH_W16 := obj/win16/src/minhop.res
 
 minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall

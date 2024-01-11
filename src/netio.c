@@ -1,55 +1,27 @@
 
 #include "netio.h"
 
-int minhop_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
-   /* Very simple arg parser. */
-
-   /* Default port. */
-   config->server_port = 24800;
-
-   if( 3 <= argc ) {
-      if( 4 <= argc ) {
-         config->server_port = atoi( argv[2] );
-         osio_printf( __FILE__, __LINE__, "server port: %d\n",
-            config->server_port );
-      }
-
-      strncpy( config->server_addr, argv[2], SERVER_ADDR_SZ_MAX );
-      osio_printf( __FILE__, __LINE__, "server address: %s\n",
-         config->server_addr );
-
-      strncpy( config->client_name, argv[1], CLIENT_NAME_SZ_MAX );
-      osio_printf( __FILE__, __LINE__, "client name: %s\n",
-         config->client_name );
-      
-      return 0;
-
-   } else {
-      osio_printf( __FILE__, __LINE__,
-         "usage: minhop <name> <server> [port]\n" );
-      return 1;
-   }
-
-}
-
 int netio_setup( struct NETIO_CFG* config ) {
    int retval = 0;
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    WSADATA wsa_data;
 #endif /* MINPUT_OS_WIN */
 
-   osio_printf( __FILE__, __LINE__, "setting up network...\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "setting up network...\n" );
 
 #ifdef MINPUT_OS_WIN32
    retval = WSAStartup( MAKEWORD( 2, 2 ), &wsa_data );
    if( 0 != retval ) {
-      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "error at WSAStartup()\n" );
       goto cleanup;
    }
 #elif defined( MINPUT_OS_WIN16 )
    retval = WSAStartup( 1, &wsa_data );
    if( 0 != retval ) {
-      osio_printf( __FILE__, __LINE__, "error at WSAStartup()\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "error at WSAStartup()\n" );
       goto cleanup;
    }
 #endif /* MINPUT_OS_WIN */
@@ -72,12 +44,13 @@ int netio_connect( struct NETIO_CFG* config ) {
    servaddr.sin_addr.s_addr = inet_addr( config->server_addr );
 
    /* Open socket. */
-   osio_printf( __FILE__, __LINE__,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
    config->socket_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
    if( -1 == config->socket_fd ) {
       /* perror( "socket" ); */
-      osio_printf( __FILE__, __LINE__, "could not open socket\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not open socket\n" );
       goto cleanup;
    }
 
@@ -87,10 +60,11 @@ int netio_connect( struct NETIO_CFG* config ) {
       (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
    if( retval ) {
       /* perror( "connect" ); */
-      osio_printf( __FILE__, __LINE__, "could not connect socket\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not connect socket\n" );
       goto cleanup;
    } else {
-      osio_printf( __FILE__, __LINE__, "connected\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "connected\n" );
    }
 
    config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
@@ -113,15 +87,19 @@ int minhop_process_packets(
    recv_sz = recv( config->socket_fd, sockbuf, SOCKBUF_SZ, 0 );
    if( 0 >= recv_sz ) {
       /* Connection died. Restart loop so we can try to reconnect. */
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "connection died!\n" );
       retval = MINHOP_ERR_RECV;
       goto cleanup;
    }
 
-   osio_printf( __FILE__, __LINE__, "recv sz: %lu\n", recv_sz );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "recv sz: %lu\n", recv_sz );
 
    /* Dump the received data into the packet buffer. */
    if( *p_pkt_buf_sz + recv_sz >= SOCKBUF_SZ ) {
-      osio_printf( __FILE__, __LINE__, "packet too large! (%lu bytes)\n",
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "packet too large! (%lu bytes)\n",
          *p_pkt_buf_sz + recv_sz );
       retval = MINHOP_ERR_PROTOCOL;
       goto cleanup;
@@ -130,23 +108,24 @@ int minhop_process_packets(
    /* Append the received data to the packet buffer. */
    memcpy( &(pkt_buf[*p_pkt_buf_sz]), sockbuf, recv_sz );
    *p_pkt_buf_sz += recv_sz;
-   osio_printf( __FILE__, __LINE__,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "copied packet(s) to pkt buffer; new pkt buffer sz: %lu\n",
       *p_pkt_buf_sz );
 
 #ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, "new pkt buffer: " );
    for( j = 0 ; recv_sz > j ; j++ ) {
-      osio_printf( __FILE__, __LINE__, "0x%02x ('%c') ", pkt_buf[j] );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "0x%02x ('%c') ", pkt_buf[j] );
    }
-   osio_printf( __FILE__, __LINE__, "\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "\n" );
 #endif /* DEBUG_PACKETS_IN */
 
    /* Process packets in the packet buffer until we run out. */
    do {
       /* How big does the packet claim to be? */
       pkt_claim_sz = swap_32( *((uint32_t*)pkt_buf) ) + 4;
-      osio_printf( __FILE__, __LINE__,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "recv announced size: %lu (0x%08x)\n",
          pkt_claim_sz, pkt_claim_sz );
 
@@ -160,14 +139,15 @@ int minhop_process_packets(
 
       /* Remove the packet size from the packet buffer size. */
       *p_pkt_buf_sz -= pkt_claim_sz;
-      osio_printf( __FILE__, __LINE__,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "removed packet; new pkt buffer sz: %lu\n",
          *p_pkt_buf_sz );
 
       /* Move the remaining contents of packet buffer down to the start. */
       for( j = 0 ; *p_pkt_buf_sz > j ; j++ ) {
          if( j + pkt_claim_sz >= SOCKBUF_SZ ) {
-            osio_printf( __FILE__, __LINE__, "pkt offset too large!\n" );
+            osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+               "pkt offset too large!\n" );
             retval = MINHOP_ERR_OVERFLOW;
             goto cleanup;
          }
@@ -183,7 +163,8 @@ cleanup:
 }
 
 void netio_disconnect( struct NETIO_CFG* config ) {
-   osio_printf( __FILE__, __LINE__, "closing socket...\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    closesocket( config->socket_fd );
 #else

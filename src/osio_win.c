@@ -8,7 +8,9 @@ UINT WM_TASKBARCREATED = 0;
 HWND g_window = NULL;
 HINSTANCE g_instance = NULL;
 int g_cmd_show = 0;
-MSG g_message;
+char g_pkt_buf[SOCKBUF_SZ + 1];
+uint32_t g_pkt_buf_sz = 0;
+struct NETIO_CFG g_config;
 
 #ifdef MINPUT_OS_WIN32
 NOTIFYICONDATA g_notify_icon_data;
@@ -18,7 +20,32 @@ LRESULT CALLBACK WndProc(
    HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
 ) {
 
+   switch( message ) {
+   case WM_TIMER:
+      minput_loop_iter( &g_config, g_pkt_buf, &g_pkt_buf_sz );
+      /* TODO: Exit on bad retval? */
+      break;
+   }
+
    return DefWindowProc( hWnd, message, wParam, lParam );
+}
+
+void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
+   /* Very simple arg parser. */
+
+   /* Default port. */
+   config->server_port = 24800;
+
+   if( 3 <= argc ) {
+      if( 4 <= argc ) {
+         config->server_port = atoi( argv[2] );
+      }
+
+      strncpy( config->server_addr, argv[2], SERVER_ADDR_SZ_MAX );
+
+      strncpy( config->client_name, argv[1], CLIENT_NAME_SZ_MAX );
+      
+   }
 }
 
 int osio_ui_setup() {
@@ -36,7 +63,9 @@ int osio_ui_setup() {
    wc.lpszClassName = "MinhopWindowClass";
 
    if( !RegisterClass( &wc ) ) {
-      /* TODO: MessageBox */
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not register window class!\n" );
+      retval = MINHOP_ERR_OS;
       goto cleanup;
    }
 
@@ -47,8 +76,8 @@ int osio_ui_setup() {
       WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT,
       CW_USEDEFAULT,
-      100,
-      100,
+      300,
+      200,
       NULL,
       NULL,
       g_instance,
@@ -56,7 +85,16 @@ int osio_ui_setup() {
    );
 
    if( !g_window ) {
-      /* TODO: MessageBox */
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not create window!\n" );
+      retval = MINHOP_ERR_OS;
+      goto cleanup;
+   }
+
+   if( !SetTimer( g_window, ID_TIMER_LOOP, 10, NULL ) ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not setup timer!\n" );
+      retval = MINHOP_ERR_OS;
       goto cleanup;
    }
 
@@ -91,19 +129,28 @@ void osio_ui_cleanup() {
 #endif /* MINPUT_OS_WIN32 */
 }
 
-int osio_ui_loop() {
+int osio_loop( struct NETIO_CFG* config ) {
    int retval = 0;
+   MSG msg;
 
-   retval = GetMessage( &g_message, NULL, 0, 0 );
-   if( retval ) {
-      TranslateMessage( &g_message );
-      DispatchMessage( &g_message );
+   do {
+      retval = GetMessage( &msg, NULL, 0, 0 );
+      TranslateMessage( &msg );
+      DispatchMessage( &msg );
+   } while( 0 < retval );
+
+   if( 0 < retval ) {
+      retval = 0;
    }
 
    return retval;
 }
 
-void osio_printf( const char* file, int line, const char* fmt, ... ) {
+void osio_printf(
+   const char* file, int line, int status, const char* fmt, ...
+) {
+
+#ifndef MINPUT_NO_PRINTF
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
 
@@ -118,6 +165,15 @@ void osio_printf( const char* file, int line, const char* fmt, ... ) {
    */
 
    fprintf( g_dbg, "%s", buffer );
+
+   if( MINPUT_STAT_ERROR == status ) {
+      MessageBox( g_window, buffer, "MInput Hop", MB_ICONSTOP );
+   }
+#else
+   if( MINPUT_STAT_ERROR == status ) {
+      MessageBox( g_window, "Error", "MInput Hop", MB_ICONSTOP );
+   }
+#endif /* !MINPUT_NO_PRINTF */
 }
 
 uint32_t osio_get_time() {
@@ -195,24 +251,20 @@ int PASCAL WinMain(
 ) {
 #endif /* MINPUT_OS_WIN32 */
    int retval = 0;
-   struct NETIO_CFG config;
 
    g_instance = instance;
    g_cmd_show = cmd_show;
 
-#ifdef MINPUT_OS_WIN32
-   memset( &config, '\0', sizeof( struct NETIO_CFG ) );
-   retval = minhop_parse_args( __argc, __argv, &config );
-   if( 0 != retval ) {
-      goto cleanup;
+   memset( &g_config, '\0', sizeof( struct NETIO_CFG ) );
+   osio_parse_args( __argc, __argv, &g_config );
+
+   retval = minput_main( &g_config );
+
+   if( retval ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "quitting: %d\n", retval );
    }
-#endif /* MINPUT_OS_WIN32 */
 
-   retval = minput_main( &config );
-
-#ifdef MINPUT_OS_WIN32
-cleanup:
-#endif /* MINPUT_OS_WIN32 */
    return retval;
 }
 

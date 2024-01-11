@@ -10,6 +10,11 @@
 #define MINHOP_ERR_RECV 2
 #define MINHOP_ERR_PROTOCOL 4
 #define MINHOP_ERR_OVERFLOW 8
+#define MINHOP_ERR_OS 16
+#define MINHOP_ERR_ARGS 32
+
+#define MINPUT_STAT_DEBUG 1
+#define MINPUT_STAT_ERROR 2
 
 /*! \} */ /* minput_error_codes */
 
@@ -78,6 +83,9 @@ struct NETIO_CFG {
  */
    uint32_t calv_deadline;
 };
+
+int minput_loop_iter(
+   struct NETIO_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz );
 
 #include "netio.h"
 #include "osio.h"

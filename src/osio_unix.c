@@ -1,7 +1,46 @@
 
 #include "osio.h"
 
-void osio_printf( const char* file, int line, const char* fmt, ... ) {
+void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
+   /* Very simple arg parser. */
+
+   /* Default port. */
+   config->server_port = 24800;
+
+   if( 3 <= argc ) {
+      if( 4 <= argc ) {
+         config->server_port = atoi( argv[2] );
+      }
+
+      strncpy( config->server_addr, argv[2], SERVER_ADDR_SZ_MAX );
+
+      strncpy( config->client_name, argv[1], CLIENT_NAME_SZ_MAX );
+      
+   }
+}
+
+int osio_ui_setup() {
+   return 0;
+}
+
+void osio_ui_cleanup() {
+
+}
+
+int osio_loop( struct NETIO_CFG* config ) {
+   int retval = 0;
+   char pkt_buf[SOCKBUF_SZ + 1];
+   uint32_t pkt_buf_sz = 0;
+
+   /* Run each the loop iterator directly. */
+   do {
+      retval = minput_loop_iter( config, pkt_buf, &pkt_buf_sz );
+   } while( 0 == retval );
+
+   return retval;
+}
+
+void osio_printf( const char* file, int line, int status, const char* fmt, ... ) {
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
 
@@ -40,12 +79,12 @@ void osio_mouse_up( uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn ) {
 }
 
 void osio_key_down( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   osio_printf( __FILE__, __LINE__, 
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "id: (%c) %d, mod: 0x%04x, btn: %d\n", key_id, key_id, key_mod, key_btn );
 }
 
 void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   osio_printf( __FILE__, __LINE__, 
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "id: (%c) %d, mod: 0x%04x, btn: %d\n", key_id, key_id, key_mod, key_btn );
 }
 
@@ -68,14 +107,10 @@ int main( int argc, char* argv[] ) {
    struct NETIO_CFG config;
 
    memset( &config, '\0', sizeof( struct NETIO_CFG ) );
-   retval = minhop_parse_args( argc, argv, &config );
-   if( 0 != retval ) {
-      goto cleanup;
-   }
+   osio_parse_args( argc, argv, &config );
 
    retval = minput_main( &config );
 
-cleanup:
    return retval;
 }
 

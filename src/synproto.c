@@ -4,11 +4,14 @@
 void synproto_dump( const char* buf, size_t buf_sz ) {
    size_t i = 0;
 
-   osio_printf( __FILE__, __LINE__, "%ld bytes\n", buf_sz );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "%ld bytes\n", buf_sz );
    for( i = 0 ; buf_sz > i ; i++ ) {
-      osio_printf( __FILE__, __LINE__, "0x%02x (%c) ", buf[i], buf[i] );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "0x%02x (%c) ", buf[i], buf[i] );
    }
-   osio_printf( __FILE__, __LINE__, " (%s)\n", buf );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      " (%s)\n", buf );
 }
 
 size_t synproto_vprintf(
@@ -70,7 +73,7 @@ size_t synproto_vprintf(
                break;
 
             default:
-               osio_printf( __FILE__, __LINE__,
+               osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
                   "invalid token size (%d)?\n", in_token );
                goto cleanup;
             }
@@ -125,19 +128,19 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    va_end( args );
 
 #ifdef DEBUG
-   osio_printf( __FILE__, __LINE__, "sending packet:\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "sending packet:\n" );
    synproto_dump( out_buf, out_pos + 4 );
 #endif /* DEBUG */
 
    if( force_sz ) {  
 #ifdef DEBUG
-      osio_printf( __FILE__, __LINE__,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
 #endif /* DEBUG */
       *buf_sz_p = swap_32( (uint32_t)4 );
    } else {
 #ifdef DEBUG
-      osio_printf( __FILE__, __LINE__,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
 #endif /* DEBUG */
       *buf_sz_p = swap_32( out_pos );
@@ -173,9 +176,10 @@ int synproto_parse_and_reply(
     */
 
 #ifdef DEBUG
-   osio_printf( __FILE__, __LINE__, "------\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "------\n" );
 
-   osio_printf( __FILE__, __LINE__, "pkt type: %c%c%c%c (0x%08x)\n",
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "pkt type: %c%c%c%c (0x%08x)\n",
       pkt_buf[4], pkt_buf[5], pkt_buf[6], pkt_buf[7],
       swap_32( *pkt_type_p ) );
 #endif /* DEBUG */
@@ -188,7 +192,7 @@ int synproto_parse_and_reply(
       ver_maj = synproto_exval_16( pkt_buf, 11 );
       ver_min = synproto_exval_16( pkt_buf, 13 );
 
-      osio_printf( __FILE__, __LINE__,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "barrier %u.%u found\n", ver_maj, ver_min );
 
       /* Send an acknowledgement and our name. */
@@ -205,7 +209,9 @@ int synproto_parse_and_reply(
       osio_screen_get_w_h( &screen_w, &screen_h );
 
 #ifdef DEBUG
-      osio_printf( __FILE__, __LINE__, "sw: %u, sh: %u\n", screen_w, screen_h );
+      osio_printf(
+         __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "sw: %u, sh: %u\n", screen_w, screen_h );
 #endif /* DEBUG */
 
       synproto_send(
@@ -216,35 +222,36 @@ int synproto_parse_and_reply(
 
    case 0x4349414b: /* CIAK */
       /* TODO: Handle this? */
-      osio_printf( __FILE__, __LINE__, "CIAK?\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "CIAK?\n" );
       break;
 
    case 0x43524f50: /* CROP */
       /* TODO: Handle this? */
-      osio_printf( __FILE__, __LINE__, "CROP?\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "CROP?\n" );
       break;
 
    case 0x43414c56: /* "CALV" */
       /* Keepalive received, so respond! */
-      osio_printf( __FILE__, __LINE__, "Ping... Pong!\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "Ping... Pong!\n" );
       synproto_send( config->socket_fd, 4, "CALV%4iCNOP", 4 );
       config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       break;
 
    case 0x43494e4e: /* "CINN" */
-      osio_printf( __FILE__, __LINE__, "in!\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "in!\n" );
       break;
 
    case 0x44434c50: /* DCLP */
       /* TODO: Transfer clipboard data. */
-      osio_printf( __FILE__, __LINE__, "clip in!\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "clip in!\n" );
       break;
 
    case 0x444d4d56: /* DMMV */
       /* OS-specific mouse movement. */
       mouse_x = synproto_exval_16( pkt_buf, 8 );
       mouse_y = synproto_exval_16( pkt_buf, 10 );
-      osio_printf( __FILE__, __LINE__, "mmv: %u, %u\n", mouse_x, mouse_y );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "mmv: %u, %u\n", mouse_x, mouse_y );
       osio_mouse_move( mouse_x, mouse_y );
       break;
 
@@ -283,7 +290,7 @@ int synproto_parse_and_reply(
       break;
 
    case 0x434f5554: /* COUT */
-      osio_printf( __FILE__, __LINE__, "out!\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "out!\n" );
       break;
 
    case 0x45424144: /* "EBAD" */
@@ -291,7 +298,8 @@ int synproto_parse_and_reply(
 
    default:
       /* Not found? Then what *did* we get? */
-      osio_printf( __FILE__, __LINE__, "invalid packet:\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "invalid packet:\n" );
       synproto_dump( pkt_buf, pkt_buf_sz );
 
       retval = MINHOP_ERR_PROTOCOL;

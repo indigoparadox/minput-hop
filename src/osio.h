@@ -16,11 +16,16 @@
 #  define OSIO_PRINTF_BUFFER_SZ 2048
 #endif /* !OSIO_PRINTF_BUFFER_SZ */
 
+void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config );
+
 int osio_ui_setup();
 
 void osio_ui_cleanup();
 
-void osio_printf( const char* file, int line, const char* fmt, ... );
+int osio_loop( struct NETIO_CFG* config );
+
+void osio_printf(
+   const char* file, int line, int status, const char* fmt, ... );
 
 /**
  * \brief Get the current system time in milliseconds.
