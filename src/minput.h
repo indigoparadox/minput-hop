@@ -84,13 +84,9 @@ struct NETIO_CFG {
 #include "synproto.h"
 
 #ifdef MINPUT_MAIN_C
-#  if !defined( MINPUT_OS_WIN16 )
 FILE* g_dbg = NULL;
-#  endif /* !MINPUT_OS_WIN16 */
 #else
-#  if !defined( MINPUT_OS_WIN16 )
 extern FILE* g_dbg;
-#  endif /* !MINPUT_OS_WIN16 */
 #endif /* MINPUT_MAIN_C */
 
 #endif /* !MINPUT_H */

@@ -14,10 +14,10 @@ int minput_main( struct NETIO_CFG* config ) {
 
    osio_logging_setup();
 
-   /* retval = minhop_gui_setup();
+   retval = osio_ui_setup();
    if( 0 != retval ) {
       goto cleanup;
-   } */
+   }
 
    /* Get to actual startup! */
    osio_printf( __FILE__, __LINE__, "starting up...\n" );
@@ -71,7 +71,7 @@ cleanup:
       netio_disconnect( config );
    }
 
-   /* osio_ui_cleanup(); */
+   osio_ui_cleanup();
 
    osio_logging_cleanup();
 

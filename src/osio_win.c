@@ -110,16 +110,14 @@ void osio_printf( const char* file, int line, const char* fmt, ... ) {
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
 
    va_start( args, fmt );
-   /* XXX: Print to window.
    vsnprintf( buffer, OSIO_PRINTF_BUFFER_SZ, fmt, args );
-   */
    va_end( args );
 
    /* XXX: Print to window.
    printf( "%s", buffer );
+   */
 
    fprintf( g_dbg, "%s", buffer );
-   */
 }
 
 uint32_t osio_get_time() {
@@ -177,23 +175,25 @@ void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
 void osio_logging_setup() {
-   /* XXX
    g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
-   */
 }
 
 void osio_logging_cleanup() {
-   /* XXX
    if( NULL != g_dbg && stdout != g_dbg ) {
       fclose( g_dbg );
    }
-   */
 }
 
+#ifdef MINPUT_OS_WIN32
 int WINAPI WinMain(
    HINSTANCE instance, HINSTANCE prev_instance, LPSTR args, int cmd_show
 ) {
+#else
+int PASCAL WinMain(
+   HINSTANCE instance, HINSTANCE prev_instance, LPSTR args, int cmd_show
+) {
+#endif /* MINPUT_OS_WIN32 */
    int retval = 0;
    struct NETIO_CFG config;
 

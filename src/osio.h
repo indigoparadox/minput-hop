@@ -16,6 +16,10 @@
 #  define OSIO_PRINTF_BUFFER_SZ 2048
 #endif /* !OSIO_PRINTF_BUFFER_SZ */
 
+int osio_ui_setup();
+
+void osio_ui_cleanup();
+
 void osio_printf( const char* file, int line, const char* fmt, ... );
 
 /**
