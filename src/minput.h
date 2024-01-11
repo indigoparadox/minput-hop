@@ -22,8 +22,6 @@
 
 /* \} */ /* minput_constants */
 
-#include <stdarg.h>
-
 #ifdef MINPUT_OS_WIN32
 #  include <winsock.h>
 #  include <windows.h>
@@ -33,16 +31,18 @@
 #  include <stdio.h> /* FILE */
 #  include <string.h> /* strlen, memset */
 #  include <stdlib.h> /* atoi */
+#  include <stdarg.h>
 #elif defined MINPUT_OS_WIN16
+#if 0
+#  include <assert.h>
+#endif
 #  include <winsock.h>
 #  include <windows.h>
 #  include <mmsystem.h>
-#if 0
-#  include <assert.h>
 #  include <stdio.h> /* FILE */
-#endif
 #  include <string.h> /* strlen, memset */
 #  include <stdlib.h> /* atoi */
+#  include <stdarg.h>
 #  define assert( cond )
 #else
 #  include <stddef.h>

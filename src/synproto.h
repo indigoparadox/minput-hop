@@ -7,8 +7,6 @@
  * \brief Tools for dealing with the Synergy protocol.
  */
 
-#include "intplat.h"
-
 #include "minput.h"
 
 #ifndef SYNPROTO_TIMEOUT_MS
