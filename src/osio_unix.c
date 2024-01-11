@@ -1,12 +1,6 @@
 
 #include "osio.h"
 
-#include <stdio.h> /* vprintf, FILE */
-#include <string.h> /* memset */
-#include <sys/time.h>
-
-FILE* g_dbg = NULL;
-
 void osio_printf( const char* file, int line, const char* fmt, ... ) {
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
@@ -24,7 +18,6 @@ void osio_printf( const char* file, int line, const char* fmt, ... ) {
 
 uint32_t osio_get_time() {
    struct timeval tv;
-   double tv_ms = 0;
    
    gettimeofday( &tv, NULL );
 
@@ -57,5 +50,32 @@ void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
+}
+
+void osio_logging_setup() {
+   g_dbg = fopen( "dbg.txt", "w" );
+   assert( NULL != g_dbg );
+}
+
+void osio_logging_cleanup() {
+   if( NULL != g_dbg && stdout != g_dbg ) {
+      fclose( g_dbg );
+   }
+}
+
+int main( int argc, char* argv[] ) {
+   int retval = 0;
+   struct NETIO_CFG config;
+
+   memset( &config, '\0', sizeof( struct NETIO_CFG ) );
+   retval = minhop_parse_args( argc, argv, &config );
+   if( 0 != retval ) {
+      goto cleanup;
+   }
+
+   retval = minput_main( &config );
+
+cleanup:
+   return retval;
 }
 

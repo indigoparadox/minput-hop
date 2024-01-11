@@ -2,14 +2,12 @@
 #ifndef OSIO_H
 #define OSIO_H
 
+#include "minput.h"
+
 /**
  * \file osio.h
  * \brief OS-specific routines for controlling the current platform.
  */
-
-#include "intplat.h"
-
-#include <stdarg.h>
 
 #define OSIO_MOUSE_LEFT 0x01
 #define OSIO_MOUSE_RIGHT 0x03
@@ -43,6 +41,12 @@ void osio_key_down( uint16_t key_id, uint16_t key_mod, uint16_t key_btn );
 void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn );
 
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn );
+
+void osio_logging_setup();
+
+void osio_logging_cleanup();
+
+int minput_main( struct NETIO_CFG* config );
 
 #endif /* !OSIO_H */
 

@@ -1,12 +1,7 @@
 
 #include "netio.h"
-#include "minerr.h"
 
-#include <string.h> /* memset, strncpy */
-#include <stdlib.h> /* atoi */
-#include <stdio.h> /* perror */
-
-int minhop_parse_args( int argc, char* argv[], struct MINHOP_CFG* config ) {
+int minhop_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
    /* Very simple arg parser. */
 
    /* Default port. */
@@ -37,7 +32,7 @@ int minhop_parse_args( int argc, char* argv[], struct MINHOP_CFG* config ) {
 
 }
 
-int netio_setup( struct MINHOP_CFG* config ) {
+int netio_setup( struct NETIO_CFG* config ) {
    int retval = 0;
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    WSADATA wsa_data;
@@ -59,12 +54,14 @@ int netio_setup( struct MINHOP_CFG* config ) {
    }
 #endif /* MINPUT_OS_WIN */
    
+#if defined( MINPUT_OS_WIN32 ) || defined( MINPUT_OS_WIN16 )
 cleanup:
+#endif /* MINPUT_OS_WIN32 */
 
    return retval;
 }
 
-int netio_connect( struct MINHOP_CFG* config ) {
+int netio_connect( struct NETIO_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
 
@@ -79,7 +76,8 @@ int netio_connect( struct MINHOP_CFG* config ) {
       "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
    config->socket_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
    if( -1 == config->socket_fd ) {
-      perror( "socket" );
+      /* perror( "socket" ); */
+      osio_printf( __FILE__, __LINE__, "could not open socket\n" );
       goto cleanup;
    }
 
@@ -88,7 +86,8 @@ int netio_connect( struct MINHOP_CFG* config ) {
       config->socket_fd,
       (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
    if( retval ) {
-      perror( "connect" );
+      /* perror( "connect" ); */
+      osio_printf( __FILE__, __LINE__, "could not connect socket\n" );
       goto cleanup;
    } else {
       osio_printf( __FILE__, __LINE__, "connected\n" );
@@ -102,7 +101,7 @@ cleanup:
 }
 
 int minhop_process_packets(
-   struct MINHOP_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz
+   struct NETIO_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz
 ) {
    uint32_t pkt_claim_sz;
    int32_t recv_sz = 0;
@@ -183,7 +182,7 @@ cleanup:
    return retval;
 }
 
-void netio_disconnect( struct MINHOP_CFG* config ) {
+void netio_disconnect( struct NETIO_CFG* config ) {
    osio_printf( __FILE__, __LINE__, "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    closesocket( config->socket_fd );

@@ -1,15 +1,6 @@
 
 #include "synproto.h"
 
-#include <stdio.h>
-#include <string.h> /* memset */
-#include <stdlib.h> /* atoi */
-
-#include "osio.h"
-#include "netio.h"
-
-extern FILE* g_dbg;
-
 void synproto_dump( const char* buf, size_t buf_sz ) {
    size_t i = 0;
 
@@ -158,7 +149,7 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
 }
 
 int synproto_parse_and_reply(
-   struct MINHOP_CFG* config, const char* pkt_buf, size_t pkt_buf_sz
+   struct NETIO_CFG* config, const char* pkt_buf, uint32_t pkt_buf_sz
 ) {
    uint32_t* pkt_type_p = (uint32_t*)&(pkt_buf[4]);
    uint16_t ver_maj = 0,

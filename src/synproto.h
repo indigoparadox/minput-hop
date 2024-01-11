@@ -9,27 +9,7 @@
 
 #include "intplat.h"
 
-#ifdef MINPUT_OS_WIN32
-#  include <winsock.h>
-#  include <windows.h>
-#elif defined MINPUT_OS_WIN16
-#  include <winsock.h>
-#  include <windows.h>
-#else
-#  include <stddef.h>
-#  include <sys/types.h>
-#  include <netinet/in.h>
-#  include <sys/socket.h>
-#  include <arpa/inet.h>
-#  include <errno.h>
-#endif /* MINPUT_OS_WIN */
-
-#include <stdarg.h>
-
-#ifndef SOCKBUF_SZ
-/*! \brief Size of the receive protocol buffer in bytes. */
-#  define SOCKBUF_SZ 4096
-#endif /* !SOCKBUF_SZ */
+#include "minput.h"
 
 #ifndef SYNPROTO_TIMEOUT_MS
 /*! \brief Timeout to wait between keepalives before disconnecting. */
@@ -111,7 +91,7 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... );
  * \param pkt_buf_sz The size of pkt_buf.
  */
 int synproto_parse_and_reply(
-   struct MINHOP_CFG* config, const char* pkt_buf, size_t pkt_buf_sz );
+   struct NETIO_CFG* config, const char* pkt_buf, uint32_t pkt_buf_sz );
 
 #endif /* SYNPROTO_H */
 
