@@ -6,8 +6,8 @@
 #ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
-FARPROC g_mouse_event_proc = 0;
-FARPROC g_keybd_event_proc = 0;
+FARPROC WINAPI g_mouse_event_proc = 0;
+FARPROC WINAPI g_keybd_event_proc = 0;
 
 #define MOUSEEVENTF_MOVE         0x00000001L
 #define MOUSEEVENTF_LEFTDOWN     0x00000002L
@@ -413,6 +413,12 @@ int PASCAL WinMain(
    /* Setup undocumented input event procs for Windows 3.x. */
 
    user_h = GetModuleHandle( "USER" );
+   if( NULL == user_h ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not find USER module!\n" );
+      retval = MINHOP_ERR_OS;
+      goto cleanup;
+   }
 
    g_mouse_event_proc = GetProcAddress( user_h, "mouse_event" );
    if( NULL == g_mouse_event_proc ) {
