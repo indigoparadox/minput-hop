@@ -6,8 +6,8 @@
 #ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
-FARPROC g_mouse_event_proc;
-FARPROC g_keybd_event_proc;
+FARPROC g_mouse_event_proc = 0;
+FARPROC g_keybd_event_proc = 0;
 
 #define MOUSEEVENTF_MOVE         0x00000001L
 #define MOUSEEVENTF_LEFTDOWN     0x00000002L
@@ -49,21 +49,22 @@ void keybd_event(
 ) {
    WORD exinfo_hi = HIWORD( extra_info );
    WORD exinfo_lo = LOWORD( extra_info );
-   WORD vk16 = vk;
-   WORD scan16 = scan;
+   BYTE flags_hi = 0;
 
    /* TODO: Extended key flag. */
 
    /* TODO Test this. */
    if( KEYEVENTF_KEYUP == (KEYEVENTF_KEYUP & flags) ) {
-      vk16 |= 0x8000;
+      flags_hi = 0x80;
    }
 
    /* Note that pusha below needs a 286+, but so does Windows 3.1, so... */
    __asm {
       pusha
-      mov ax, vk16
-      mov bx, scan16
+      mov al, vk
+      mov ah, flags_hi
+      mov bl, scan
+      mov bh, flags_hi
       mov si, exinfo_hi
       mov di, exinfo_lo
       call g_keybd_event_proc
