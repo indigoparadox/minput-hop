@@ -87,32 +87,51 @@ struct NETIO_CFG g_config;
 NOTIFYICONDATA g_notify_icon_data;
 #endif /* MINPUT_OS_WIN32 */
 
+static void osio_win_quit( HWND window_h ) {
+   /* Don't try to reconnect! */
+   KillTimer( window_h, ID_TIMER_LOOP );
+   netio_disconnect( &g_config, NETIO_DISCO_FORCE );
+   PostQuitMessage( 0 );
+}
+
 LRESULT CALLBACK WndProc(
-   HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam
+   HWND window_h, UINT message, WPARAM wParam, LPARAM lParam
 ) {
    HWND clientname_h = (HWND)NULL;
+   HANDLE instance_h = (HANDLE)NULL;
 
    switch( message ) {
    case WM_CREATE:
       clientname_h = CreateWindow(
-         "EDIT", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-         10, 10, 100, 20, g_window, (HMENU)ID_EDIT_CLIENT_NAME,
-         g_instance, NULL );
+         "edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+         10, 10, 100, 25, window_h, (HMENU)ID_EDIT_CLIENT_NAME,
+         instance_h, NULL );
       break;
 
    case WM_TIMER:
-      minput_loop_iter( &g_config, g_pkt_buf, &g_pkt_buf_sz );
-      /* TODO: Exit on bad retval? */
+      if( ID_TIMER_LOOP == wParam ) {
+         minput_loop_iter( &g_config, g_pkt_buf, &g_pkt_buf_sz );
+         /* TODO: Exit on bad retval? */
+      }
+      break;
+
+   case WM_COMMAND:
+      switch( wParam ) {
+      case ID_WIN_MENU_FILE_EXIT:
+         osio_win_quit( window_h );
+         break;
+      }
       break;
 
    case WM_CLOSE:
-      /* Don't try to reconnect! */
-      netio_disconnect( &g_config, NETIO_DISCO_FORCE );
-      PostQuitMessage( 0 );
+      osio_win_quit( window_h );
       break;
+      
+   default:
+      return DefWindowProc( window_h, message, wParam, lParam );
    }
 
-   return DefWindowProc( hWnd, message, wParam, lParam );
+   return 0;
 }
 
 void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
@@ -137,7 +156,9 @@ int osio_ui_setup() {
    int retval = 0;
    WNDCLASS wc = { 0 };
 
+#ifdef MINPUT_OS_WIN32
    WM_TASKBARCREATED = RegisterWindowMessage( "TaskbarCreated" );
+#endif /* MINPUT_OS_WIN32 */
 
    /* Create window class. */
    wc.lpfnWndProc = (WNDPROC)&WndProc;
@@ -145,6 +166,7 @@ int osio_ui_setup() {
    wc.hIcon = LoadIcon( g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
    wc.hCursor = LoadCursor( 0, IDC_ARROW );
    wc.hbrBackground = (HBRUSH)( COLOR_BTNFACE + 1 );
+   wc.lpszMenuName = "MinhopWindowMenu";
    wc.lpszClassName = "MinhopWindowClass";
 
    if( !RegisterClass( &wc ) ) {
@@ -153,6 +175,8 @@ int osio_ui_setup() {
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
+
+   /* Create the window. */
 
    g_window = CreateWindowEx(
       0,

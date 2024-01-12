@@ -24,3 +24,9 @@ This might be simplified somewhat later, but it works for now.
  - Abstract socket send/recv/etc into layer that can be switched out for e.g.
    serial communication over RS-232.
 
+## References
+
+- Programming Windows, 3rd Edition - Petzold, Charles
+- [https://www.qemu.org/docs/master/interop/barrier.html](qemu) docs for Barrier protocol information.
+- @cvtsi2sd@hachyderm.io for undocumented \*\_event() calls in Windows 3.
+
