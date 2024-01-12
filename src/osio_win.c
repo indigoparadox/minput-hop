@@ -77,6 +77,7 @@ void keybd_event(
 UINT WM_TASKBARCREATED = 0;
 
 HWND g_window = NULL;
+HWND g_status_label_h = NULL;
 HINSTANCE g_instance = NULL;
 int g_cmd_show = 0;
 char* g_pkt_buf = NULL;
@@ -94,17 +95,53 @@ static void osio_win_quit( HWND window_h ) {
    PostQuitMessage( 0 );
 }
 
+static HWND osio_win_add_field(
+   HWND parent_h, HANDLE instance_h,
+   const char* label, uint16_t y, uint16_t id
+) {
+   HWND out_h = (HWND)NULL;
+
+   CreateWindow(
+      "static", label, WS_CHILD | WS_VISIBLE,
+      10, y, 110, 25, parent_h, NULL,
+      instance_h, NULL );
+   out_h = CreateWindow(
+      "edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
+      120, y, 160, 25, parent_h, (HMENU)id,
+      instance_h, NULL );
+
+   return out_h;
+}
+
 LRESULT CALLBACK WndProc(
    HWND window_h, UINT message, WPARAM wParam, LPARAM lParam
 ) {
-   HWND clientname_h = (HWND)NULL;
+   static HWND client_name_h = (HWND)NULL;
+   static HWND server_addr_h = (HWND)NULL;
+   static HWND server_port_h = (HWND)NULL;
+   static HWND save_h = (HWND)NULL;
    HANDLE instance_h = (HANDLE)NULL;
 
    switch( message ) {
    case WM_CREATE:
-      clientname_h = CreateWindow(
-         "edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-         10, 10, 100, 25, window_h, (HMENU)ID_EDIT_CLIENT_NAME,
+      /* Create text fields. */
+      client_name_h = osio_win_add_field(
+         window_h, instance_h, "Client name", 10, ID_WIN_CLIENT_NAME );
+      SetWindowText( client_name_h, g_config.client_name );
+      server_addr_h = osio_win_add_field(
+         window_h, instance_h, "Server address", 40, ID_WIN_SERVER_ADDR );
+      SetWindowText( server_addr_h, g_config.server_addr );
+      server_port_h = osio_win_add_field(
+         window_h, instance_h, "Server port", 70, ID_WIN_SERVER_ADDR );
+
+      save_h = CreateWindow(
+         "button", "&Save", WS_CHILD | WS_VISIBLE | WS_BORDER,
+         10, 100, 60, 30, window_h, (HMENU)ID_WIN_SAVE,
+         instance_h, NULL );
+
+      g_status_label_h = CreateWindow(
+         "static", "", WS_CHILD | WS_VISIBLE,
+         10, 140, 270, 20, window_h, NULL,
          instance_h, NULL );
       break;
 
@@ -186,7 +223,7 @@ int osio_ui_setup() {
       CW_USEDEFAULT,
       CW_USEDEFAULT,
       300,
-      200,
+      210,
       NULL,
       NULL,
       g_instance,
@@ -250,7 +287,7 @@ int osio_loop( struct NETIO_CFG* config ) {
       DispatchMessage( &msg );
    } while( 0 < retval );
 
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "leaving message loop...\n" );
 
    if( 0 < retval ) {
@@ -280,14 +317,15 @@ void osio_printf(
 
    fprintf( g_dbg, "%s", buffer );
 
+#else
+   char* buffer = "Placeholder";
+#endif /* !MINPUT_NO_PRINTF */
+
    if( MINPUT_STAT_ERROR == status ) {
       MessageBox( g_window, buffer, "MInput Hop", MB_ICONSTOP );
+   } else if( MINPUT_STAT_INFO == status ) {
+      SetWindowText( g_status_label_h, buffer );
    }
-#else
-   if( MINPUT_STAT_ERROR == status ) {
-      MessageBox( g_window, "Error", "MInput Hop", MB_ICONSTOP );
-   }
-#endif /* !MINPUT_NO_PRINTF */
 }
 
 uint32_t osio_get_time() {

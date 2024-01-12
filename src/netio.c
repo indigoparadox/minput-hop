@@ -11,7 +11,7 @@ int netio_setup( struct NETIO_CFG* config ) {
    WSADATA wsa_data;
 #endif /* MINPUT_OS_WIN */
 
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "setting up network...\n" );
 
 #ifdef MINPUT_OS_WIN32
@@ -77,7 +77,7 @@ int netio_connect( struct NETIO_CFG* config ) {
          "could not connect socket\n" );
       goto cleanup;
    } else {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "connected\n" );
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO, "connected!\n" );
    }
 
    config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
@@ -176,7 +176,7 @@ cleanup:
 }
 
 void netio_disconnect( struct NETIO_CFG* config, int force ) {
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    closesocket( config->socket_fd );
@@ -184,6 +184,9 @@ void netio_disconnect( struct NETIO_CFG* config, int force ) {
    close( config->socket_fd );
 #endif /* MINPUT_OS_WIN */
    config->socket_fd = force;
+
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
+      "disconnected!\n" );
 }
 
 void netio_cleanup() {

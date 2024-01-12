@@ -16,6 +16,7 @@
 
 #define MINPUT_STAT_DEBUG 1
 #define MINPUT_STAT_ERROR 2
+#define MINPUT_STAT_INFO  3
 
 /*! \} */ /* minput_error_codes */
 
