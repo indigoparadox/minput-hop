@@ -6,8 +6,8 @@
 #ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
-FARPROC WINAPI g_mouse_event_proc = 0;
-FARPROC WINAPI g_keybd_event_proc = 0;
+FARPROC g_mouse_event_proc = 0;
+FARPROC g_keybd_event_proc = 0;
 
 #define MOUSEEVENTF_MOVE         0x00000001L
 #define MOUSEEVENTF_LEFTDOWN     0x00000002L
@@ -29,6 +29,16 @@ void mouse_event(
 ) {
    WORD exinfo_hi = HIWORD( extra_info );
    WORD exinfo_lo = LOWORD( extra_info );
+   /*
+   WORD segvar = 0;
+
+   __asm {
+      mov segvar, cs
+   }
+
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      "cs: %04x\n", segvar );
+   */
 
    /* Note that pusha below needs a 286+, but so does Windows 3.1, so... */
    __asm {
@@ -297,28 +307,140 @@ int osio_loop( struct NETIO_CFG* config ) {
    return retval;
 }
 
+#ifdef MINPUT_NO_PRINTF
+union FMT_SPEC {
+   long d;
+   unsigned long u;
+   char c;
+   void* p;
+   char* s;
+};
+
+#define SPEC_FMT_LONG 1
+#define SPEC_FMT_UNSIGNED 2
+#endif /* MINPUT_NO_PRINTF */
+
 void osio_printf(
    const char* file, int line, int status, const char* fmt, ...
 ) {
-
-#ifndef MINPUT_NO_PRINTF
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
 
+#ifndef MINPUT_NO_PRINTF
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
 
    va_start( args, fmt );
    vsnprintf( buffer, OSIO_PRINTF_BUFFER_SZ, fmt, args );
    va_end( args );
-
-   /* XXX: Print to window.
-   printf( "%s", buffer );
-   */
-
-   fprintf( g_dbg, "%s", buffer );
-
 #else
-   char* buffer = "Placeholder";
+   size_t i = 0,
+      i_out = 0;
+   char last = '\0';
+   int spec_fmt = 0;
+   union FMT_SPEC spec;
+   char itoa_buf[50];
+   char c;
+
+   va_start( args, fmt );
+
+   memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
+   memset( itoa_buf, '\0', 50 );
+
+   /* Roughly adapted from uprintf for Visual C++ */
+
+   for( i = 0 ; '\0' != fmt[i] ; i++ ) {
+      c = fmt[i]; /* Separate so we can play tricks below. */
+ 
+      if( '%' == last ) {
+         /* Conversion specifier encountered. */
+         switch( fmt[i] ) {
+            case 'l':
+               spec_fmt |= SPEC_FMT_LONG;
+               /* Skip resetting the last char. */
+               continue;
+
+            case 's':
+               spec.s = va_arg( args, char* );
+
+               /* Print string. */
+               i_out += strlen( spec.s );
+               strcat( buffer, spec.s );
+               break;
+
+            case 'u':
+               spec_fmt |= SPEC_FMT_UNSIGNED;
+            case 'd':
+               if( SPEC_FMT_LONG == (SPEC_FMT_LONG & spec_fmt) ) {
+                  if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
+                     spec.u = va_arg( args, unsigned long );
+                  } else {
+                     spec.d = va_arg( args, long );
+                  }
+               } else {
+                  if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
+                     spec.u = va_arg( args, unsigned );
+                  } else {
+                     spec.d = va_arg( args, int );
+                  }
+               }
+               
+               if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
+                  _ultoa( spec.u, itoa_buf, 10 );
+               } else {
+                  _ltoa( spec.d, itoa_buf, 10 );
+               }
+               i_out += strlen( itoa_buf );
+               strcat( buffer, itoa_buf );
+               break;
+
+            case 'x':
+               if( SPEC_FMT_LONG == (SPEC_FMT_LONG & spec_fmt) ) {
+                  spec.u = va_arg( args, unsigned long );
+               } else {
+                  spec.u = va_arg( args, unsigned int );
+               }
+
+               /* TODO */
+
+               _ultoa( spec.u, itoa_buf, 16 );
+               i_out += strlen( itoa_buf );
+               strcat( buffer, itoa_buf );
+               break;
+
+            case 'c':
+               spec.c = va_arg( args, int );
+
+               buffer[i_out++] = spec.c;
+               break;
+
+            case '%':
+               /* Literal % */
+               last = '\0';
+               buffer[i_out++] = '%';
+               break;
+
+            case '0':
+            case '1':
+            case '2':
+            case '3':
+            case '4':
+            case '5':
+            case '6':
+            case '7':
+            case '8':
+            case '9':
+               c = '%';
+               break;
+         }
+      } else if( '%' != c ) {
+         spec_fmt = 0;
+         buffer[i_out++] = c;
+         memset( itoa_buf, '\0', 50 );
+      }
+      last = c;
+   }
+
+   va_end( args );
 #endif /* !MINPUT_NO_PRINTF */
 
    if( MINPUT_STAT_ERROR == status ) {
@@ -326,6 +448,8 @@ void osio_printf(
    } else if( MINPUT_STAT_INFO == status ) {
       SetWindowText( g_status_label_h, buffer );
    }
+
+   fprintf( g_dbg, "%s", buffer );
 }
 
 uint32_t osio_get_time() {
@@ -419,22 +543,34 @@ int PASCAL WinMain(
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
+   /*
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      "found USER.EXE at: 0x%04x\n", user_h );
+   */
 
-   g_mouse_event_proc = GetProcAddress( user_h, "mouse_event" );
+   g_mouse_event_proc = GetProcAddress( user_h, "mouse_event" ); /* 507a */
    if( NULL == g_mouse_event_proc ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "could not find mouse_event proc!\n" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
+   /*
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      "found mouse_event at: 0x%04x\n", g_mouse_event_proc );
+   */
 
-   g_keybd_event_proc = GetProcAddress( user_h, "keybd_event" );
+   g_keybd_event_proc = GetProcAddress( user_h, "keybd_event" ); /* 4b59 */
    if( NULL == g_keybd_event_proc ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "could not find keybd_event proc!\n" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
+   /*
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      "found keybd_event at: 0x%04x\n", g_keybd_event_proc );
+   */
 
 #endif /* MINPUT_OS_WIN16 */
 
@@ -447,9 +583,15 @@ int PASCAL WinMain(
       goto cleanup;
    }
 
+#ifdef MINPUT_NO_ARGS
+   strcpy( g_config.client_name, MINPUT_S_CLIENT_NAME );
+   strcpy( g_config.server_addr, MINPUT_S_SERVER_ADDR );
+   g_config.server_port = 24800;
+#else
    /* Setup network config. */
    memset( &g_config, '\0', sizeof( struct NETIO_CFG ) );
    osio_parse_args( __argc, __argv, &g_config );
+#endif /* MINPUT_NO_ARGS */
 
    retval = minput_main( &g_config );
 

@@ -17,8 +17,6 @@
 
 #include "minput.h"
 
-int minhop_parse_args( int argc, char* argv[], struct NETIO_CFG* config );
-
 int netio_setup( struct NETIO_CFG* config );
 
 int netio_connect( struct NETIO_CFG* config );
