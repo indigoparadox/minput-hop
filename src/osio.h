@@ -13,7 +13,7 @@
 #define OSIO_MOUSE_RIGHT 0x03
 
 #ifndef OSIO_PRINTF_BUFFER_SZ
-#  define OSIO_PRINTF_BUFFER_SZ 2048
+#  define OSIO_PRINTF_BUFFER_SZ 1024
 #endif /* !OSIO_PRINTF_BUFFER_SZ */
 
 void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config );
@@ -56,6 +56,15 @@ void osio_logging_setup();
 void osio_logging_cleanup();
 
 int minput_main( struct NETIO_CFG* config );
+
+#ifdef MINPUT_OS_WIN16
+
+#define MAKEWORD( p1, p2 ) \
+    ((WORD)((BYTE)(uint32_t*)(p1) & 0xFF) | \
+    ((WORD)((BYTE)(uint32_t*)(p2) & 0xFF) << 8))
+
+
+#endif /* MINPUT_OS_WIN16 */
 
 #endif /* !OSIO_H */
 

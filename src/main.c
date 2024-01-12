@@ -34,7 +34,7 @@ int minput_loop_iter(
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "timed out (%u past %u), restarting!\n",
          time_now, config->calv_deadline );
-      netio_disconnect( config );
+      netio_disconnect( config, NETIO_DISCO );
    }
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
@@ -53,8 +53,11 @@ int minput_main( struct NETIO_CFG* config ) {
 
    osio_logging_setup();
 
+   /*
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-      "%s | %s | %d\n", config->client_name, config->server_addr, config->server_port );
+      "%s | %s | %d\n",
+      config->client_name, config->server_addr, config->server_port );
+   */
 
    if(
       '\0' == config->client_name[0] ||
@@ -90,8 +93,10 @@ int minput_main( struct NETIO_CFG* config ) {
 cleanup:
 
    if( 0 < config->socket_fd ) {
-      netio_disconnect( config );
+      netio_disconnect( config, NETIO_DISCO_FORCE );
    }
+
+   netio_cleanup();
 
    osio_ui_cleanup();
 

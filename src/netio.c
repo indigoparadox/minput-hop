@@ -1,6 +1,10 @@
 
 #include "netio.h"
 
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
+int g_wsastart_success = 0;
+#endif /* MINPUT_OS_WIN */
+
 int netio_setup( struct NETIO_CFG* config ) {
    int retval = 0;
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
@@ -18,15 +22,18 @@ int netio_setup( struct NETIO_CFG* config ) {
       goto cleanup;
    }
 #elif defined( MINPUT_OS_WIN16 )
-   retval = WSAStartup( 1, &wsa_data );
+   retval = WSAStartup( MAKEWORD( 1, 1 ), &wsa_data );
    if( 0 != retval ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "error at WSAStartup()\n" );
       goto cleanup;
    }
 #endif /* MINPUT_OS_WIN */
-   
+
 #if defined( MINPUT_OS_WIN32 ) || defined( MINPUT_OS_WIN16 )
+   /* If we got this far, WSAStartup worked! */
+   g_wsastart_success = 0;
+   
 cleanup:
 #endif /* MINPUT_OS_WIN32 */
 
@@ -36,6 +43,12 @@ cleanup:
 int netio_connect( struct NETIO_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
+
+   if( 0 > config->socket_fd ) {
+      /* Negative socket! Do not connect! */
+      retval = MINHOP_ERR_PROTOCOL;
+      goto cleanup;
+   }
 
    /* Resolve server address. */
    memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
@@ -87,8 +100,8 @@ int minhop_process_packets(
    recv_sz = recv( config->socket_fd, sockbuf, SOCKBUF_SZ, 0 );
    if( 0 >= recv_sz ) {
       /* Connection died. Restart loop so we can try to reconnect. */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "connection died!\n" );
+      /*osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "connection died!\n" );*/
       retval = MINHOP_ERR_RECV;
       goto cleanup;
    }
@@ -162,7 +175,7 @@ cleanup:
    return retval;
 }
 
-void netio_disconnect( struct NETIO_CFG* config ) {
+void netio_disconnect( struct NETIO_CFG* config, int force ) {
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
@@ -170,6 +183,14 @@ void netio_disconnect( struct NETIO_CFG* config ) {
 #else
    close( config->socket_fd );
 #endif /* MINPUT_OS_WIN */
-   config->socket_fd = 0;
+   config->socket_fd = force;
+}
+
+void netio_cleanup() {
+#if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
+   if( g_wsastart_success ) {
+      WSACleanup();
+   }
+#endif /* MINPUT_OS_WIN */
 }
 
