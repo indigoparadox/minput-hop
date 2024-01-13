@@ -85,10 +85,12 @@ struct NETIO_CFG {
  *        received from the server in order for us not to disconnect.
  */
    uint32_t calv_deadline;
+   char* pkt_buf;
+   uint32_t pkt_buf_sz;
+   uint32_t pkt_buf_sz_max;
 };
 
-int minput_loop_iter(
-   struct NETIO_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz );
+int minput_loop_iter( struct NETIO_CFG* config );
 
 #include "netio.h"
 #include "osio.h"

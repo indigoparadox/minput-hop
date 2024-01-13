@@ -34,7 +34,7 @@ int osio_loop( struct NETIO_CFG* config ) {
 
    /* Run each the loop iterator directly. */
    do {
-      retval = minput_loop_iter( config, pkt_buf, &pkt_buf_sz );
+      retval = minput_loop_iter( config );
    } while( 0 == retval );
 
    return retval;

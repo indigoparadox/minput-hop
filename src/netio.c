@@ -53,7 +53,7 @@ int netio_connect( struct NETIO_CFG* config ) {
    if( 0 == config->socket_fd ) {
       /* Open socket. */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
+         "connecting to 0x%08lx...\n", servaddr.sin_addr.s_addr );
       config->socket_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
       if( -1 == config->socket_fd ) {
          /* perror( "socket" ); */
@@ -87,14 +87,13 @@ cleanup:
    return retval;
 }
 
-int minhop_process_packets(
-   struct NETIO_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz
-) {
+int minhop_process_packets( struct NETIO_CFG* config ) {
    uint32_t pkt_claim_sz;
    int32_t recv_sz = 0;
    char sockbuf[SOCKBUF_SZ + 1];
    uint32_t j = 0;
    int retval = 0;
+   char* new_pkt_buf = NULL;
 
    /* Receive more data from the socket. */
    recv_sz = recv( config->socket_fd, sockbuf, SOCKBUF_SZ, 0 );
@@ -110,20 +109,30 @@ int minhop_process_packets(
       "recv sz: %lu\n", recv_sz );
 
    /* Dump the received data into the packet buffer. */
-   if( *p_pkt_buf_sz + recv_sz >= SOCKBUF_SZ ) {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "packet too large! (%lu bytes)\n",
-         *p_pkt_buf_sz + recv_sz );
-      retval = MINHOP_ERR_OVERFLOW;
-      goto cleanup;
+   if( config->pkt_buf_sz + recv_sz >= SOCKBUF_SZ ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "packet won't fit in buffer! (%lu bytes) reallocating...\n",
+         config->pkt_buf_sz + recv_sz );
+
+      new_pkt_buf = realloc(
+         config->pkt_buf, config->pkt_buf_sz + recv_sz + 100 );
+      if( NULL == new_pkt_buf ) {
+         osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+            "could not reallocate packet buffer! (%lu bytes)\n",
+            config->pkt_buf_sz + recv_sz + 100 );
+         retval = MINHOP_ERR_ALLOC;
+         goto cleanup;
+      }
+      config->pkt_buf = new_pkt_buf;
+      config->pkt_buf_sz_max = config->pkt_buf_sz + recv_sz + 100;
    }
 
    /* Append the received data to the packet buffer. */
-   memcpy( &(pkt_buf[*p_pkt_buf_sz]), sockbuf, recv_sz );
-   *p_pkt_buf_sz += recv_sz;
+   memcpy( &(config->pkt_buf[config->pkt_buf_sz]), sockbuf, recv_sz );
+   config->pkt_buf_sz += recv_sz;
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "copied packet(s) to pkt buffer; new pkt buffer sz: %lu\n",
-      *p_pkt_buf_sz );
+      config->pkt_buf_sz );
 
 #ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, "new pkt buffer: " );
@@ -137,38 +146,39 @@ int minhop_process_packets(
    /* Process packets in the packet buffer until we run out. */
    do {
       /* How big does the packet claim to be? */
-      pkt_claim_sz = swap_32( *((uint32_t*)pkt_buf) ) + 4;
+      pkt_claim_sz = swap_32( *((uint32_t*)(config->pkt_buf)) ) + 4;
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "recv announced size: %lu (0x%08x)\n",
+         "recv announced size: %lu (0x%08lx)\n",
          pkt_claim_sz, pkt_claim_sz );
 
-      if( *p_pkt_buf_sz < pkt_claim_sz ) {
+      if( config->pkt_buf_sz < pkt_claim_sz ) {
          /* The packet is too small! Let's try again to fetch the rest! */
          break;
       }
 
       /* Parse this packet, taking its claim at face value. */
-      retval = synproto_parse_and_reply( config, pkt_buf, pkt_claim_sz );
+      retval = synproto_parse_and_reply(
+         config, config->pkt_buf, pkt_claim_sz );
 
       /* Remove the packet size from the packet buffer size. */
-      *p_pkt_buf_sz -= pkt_claim_sz;
+      config->pkt_buf_sz -= pkt_claim_sz;
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "removed packet; new pkt buffer sz: %lu\n",
-         *p_pkt_buf_sz );
+         config->pkt_buf_sz );
 
       /* Move the remaining contents of packet buffer down to the start. */
-      for( j = 0 ; *p_pkt_buf_sz > j ; j++ ) {
-         if( j + pkt_claim_sz >= SOCKBUF_SZ ) {
+      for( j = 0 ; config->pkt_buf_sz > j ; j++ ) {
+         if( j + pkt_claim_sz >= config->pkt_buf_sz_max ) {
             osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
                "pkt offset too large!\n" );
             retval = MINHOP_ERR_OVERFLOW;
             goto cleanup;
          }
-         pkt_buf[j] = pkt_buf[j + pkt_claim_sz];
+         config->pkt_buf[j] = config->pkt_buf[j + pkt_claim_sz];
       }
 
       /* Keep going while we have valid packets left to process. */
-   } while( *p_pkt_buf_sz > 0 );
+   } while( config->pkt_buf_sz > 0 );
 
 cleanup:
 

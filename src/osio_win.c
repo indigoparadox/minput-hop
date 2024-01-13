@@ -194,7 +194,7 @@ LRESULT CALLBACK WndProc(
 
    case WM_TIMER:
       if( ID_TIMER_LOOP == wParam ) {
-         minput_loop_iter( &g_config, g_pkt_buf, &g_pkt_buf_sz );
+         minput_loop_iter( &g_config );
          /* TODO: Exit on bad retval? */
       }
       break;

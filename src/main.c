@@ -2,9 +2,7 @@
 #define MINPUT_MAIN_C
 #include "minput.h"
 
-int minput_loop_iter(
-   struct NETIO_CFG* config, char* pkt_buf, uint32_t* p_pkt_buf_sz
-) {
+int minput_loop_iter( struct NETIO_CFG* config ) {
    int retval = 0;
    uint32_t time_now = 0;
 
@@ -27,7 +25,7 @@ int minput_loop_iter(
 #endif /* DEBUG */
 
    /* Process packets and handle protocol/input events. */
-   retval = minhop_process_packets( config, pkt_buf, p_pkt_buf_sz );
+   retval = minhop_process_packets( config );
    if( MINHOP_ERR_RECV == retval ) {
       /* Not a show-stopper, but try to reconnect! */
       retval = 0;
@@ -44,12 +42,6 @@ int minput_loop_iter(
 #endif /* DEBUG */
       retval = 0;
 
-   } else if( MINHOP_ERR_OVERFLOW == retval ) {
-      /* Dump the packet buffer and start from scratch! */
-      *p_pkt_buf_sz = 0;
-      netio_disconnect( config );
-      retval = 0;
-      goto cleanup;
    }
 
 #ifdef DEBUG
@@ -109,20 +101,37 @@ int minput_main( struct NETIO_CFG* config ) {
       goto cleanup;
    }
 
+   config->pkt_buf_sz_max = SOCKBUF_SZ;
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "setting up packet buffer with initial size of %lu...\n",
+      config->pkt_buf_sz_max );
+   config->pkt_buf_sz = 0;
+   config->pkt_buf = calloc( config->pkt_buf_sz_max, 1 );
+   if( NULL == config->pkt_buf ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not allocate packet buffer!\n" );
+      retval = MINHOP_ERR_ALLOC;
+      goto cleanup;
+   }
+
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "starting up UI...\n" );
+
    retval = osio_ui_setup();
    if( 0 != retval ) {
       goto cleanup;
    }
 
-   /* Get to actual startup! */
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "starting up...\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "starting up network...\n" );
    
    retval = netio_setup( config );
    if( 0 != retval ) {
       goto cleanup;
    }
 
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "starting main loop...\n" );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "starting main loop...\n" );
 
    retval = osio_loop( config );
 
@@ -135,6 +144,12 @@ cleanup:
    netio_cleanup();
 
    osio_ui_cleanup();
+
+   if( NULL != config->pkt_buf ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "freeing packet buffer...\n" );
+      free( config->pkt_buf );
+   }
 
    osio_logging_cleanup();
 
