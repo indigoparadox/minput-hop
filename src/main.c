@@ -8,6 +8,11 @@ int minput_loop_iter(
    int retval = 0;
    uint32_t time_now = 0;
 
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "beginning iteration...\n" );
+#endif /* DEBUG */
+
    /* Ensure we are connected; reconnect if not. */
    if( 0 == config->socket_fd ) {
       retval = netio_connect( config );
@@ -16,29 +21,52 @@ int minput_loop_iter(
       }
    }
 
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "processing packets...\n" );
+#endif /* DEBUG */
+
    /* Process packets and handle protocol/input events. */
    retval = minhop_process_packets( config, pkt_buf, p_pkt_buf_sz );
    if( MINHOP_ERR_RECV == retval ) {
       /* Not a show-stopper, but try to reconnect! */
       retval = 0;
-      goto cleanup;
+#ifdef DEBUG
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "no data received!\n" );
+#endif /* DEBUG */
    } else if( MINHOP_ERR_PROTOCOL == retval ) {
       /* Protocol error also isn't a show-stopper. */
+#ifdef DEBUG
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "protocol error!\n" );
+#endif /* DEBUG */
       retval = 0;
    }
+
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "checking keepalives...\n" );
+#endif /* DEBUG */
 
    /* Check how we're doing for keepalives. */
    time_now = osio_get_time();
    if( time_now > config->calv_deadline ) {
       /* Too long since the last keepalive! Restart! */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      /* Note: This is not STAT_ERROR because that might produce too many
+       * dialogs, overwhelming Win16! */
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
          "timed out (%u past %u), restarting!\n",
          time_now, config->calv_deadline );
-      netio_disconnect( config, NETIO_DISCO );
+      if( 0 != config->socket_fd ) {
+         netio_disconnect( config );
+      }
    }
 
+#ifdef DEBUG
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "successfully finished packet queue!\n" );
+      "(%lu) successfully finished iteration!\n", time_now );
+#endif /* DEBUG */
 
 cleanup:
    return retval;
@@ -93,7 +121,7 @@ int minput_main( struct NETIO_CFG* config ) {
 cleanup:
 
    if( 0 < config->socket_fd ) {
-      netio_disconnect( config, NETIO_DISCO_FORCE );
+      netio_disconnect( config );
    }
 
    netio_cleanup();

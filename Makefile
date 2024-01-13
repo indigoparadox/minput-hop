@@ -4,16 +4,17 @@
 SOURCES := src/main.c src/synproto.c src/netio.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
-minhop32.exe: CFLAGS_WATCOM := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw
+CFLAGS_WATCOM_W32 := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw
 RES_PATH_W32 := obj/win32/src/minhop.res
 
-minhop16.exe: CFLAGS_WATCOM := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16
+CFLAGS_WATCOM_W16 := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16
 RES_PATH_W16 := obj/win16/src/minhop.res
 
 minhop: CFLAGS_GCC :=
 
-ifneq ("$(RELEASE)", "RELEASE")
-	CFLAGS_WATCOM += -we -DDEBUG
+ifneq ("$(BUILD)", "RELEASE")
+	CFLAGS_WATCOM_W32 += -we -DDEBUG
+	CFLAGS_WATCOM_W16 += -we -DDEBUG
 	CFLAGS_GCC += -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall
 endif
 
@@ -36,11 +37,11 @@ $(RES_PATH_W16): src/minhop.rc
 
 obj/win32/%.o: %.c
 	mkdir -p "obj/win32/$(dir $<)"
-	wcc386 $(CFLAGS_WATCOM) -fo=$@ $<
+	wcc386 $(CFLAGS_WATCOM_W32) -fo=$@ $<
 
 obj/win16/%.o: %.c
 	mkdir -p "obj/win16/$(dir $<)"
-	wcc $(CFLAGS_WATCOM) -fo=$@ $<
+	wcc $(CFLAGS_WATCOM_W16) -fo=$@ $<
 
 obj/unix/%.o: %.c
 	mkdir -p "obj/unix/$(dir $<)"

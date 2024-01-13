@@ -83,16 +83,25 @@ int g_cmd_show = 0;
 char* g_pkt_buf = NULL;
 uint32_t g_pkt_buf_sz = 0;
 struct NETIO_CFG g_config;
+int g_running = 1;
 
 #ifdef MINPUT_OS_WIN32
 NOTIFYICONDATA g_notify_icon_data;
 #endif /* MINPUT_OS_WIN32 */
 
 static void osio_win_quit( HWND window_h ) {
+   
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "quit command received from UI...\n" );
+
    /* Don't try to reconnect! */
    KillTimer( window_h, ID_TIMER_LOOP );
-   netio_disconnect( &g_config, NETIO_DISCO_FORCE );
+   if( 0 != g_config.socket_fd ) {
+      netio_disconnect( &g_config );
+   }
    PostQuitMessage( 0 );
+
+   g_running = 0;
 }
 
 static HWND osio_win_add_field(
@@ -113,6 +122,40 @@ static HWND osio_win_add_field(
    return out_h;
 }
 
+static void osio_win_save_fields(
+   HWND client_name_h, HWND server_addr_h, HWND server_port_h
+) {
+   int retval = 0;
+   char buffer[SERVER_ADDR_SZ_MAX + 1];
+
+   /* Automatically try to connect with new info later. */
+   netio_disconnect( &g_config );
+
+   /* Parse the fields into config. */
+
+   memset( buffer, '\0', SERVER_ADDR_SZ_MAX + 1 );
+   retval = GetWindowText( client_name_h, buffer, SERVER_ADDR_SZ_MAX );
+   strncpy( g_config.client_name, buffer, SERVER_ADDR_SZ_MAX );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "set client name to: %s\n", g_config.client_name );
+
+   memset( buffer, '\0', SERVER_ADDR_SZ_MAX + 1 );
+   retval = GetWindowText( server_addr_h, buffer, SERVER_ADDR_SZ_MAX );
+   strncpy( g_config.server_addr, buffer, SERVER_ADDR_SZ_MAX );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "set server address to: %s\n", g_config.server_addr );
+
+   memset( buffer, '\0', SERVER_ADDR_SZ_MAX + 1 );
+   retval = GetWindowText( server_port_h, buffer, SERVER_ADDR_SZ_MAX );
+   g_config.server_port = atoi( buffer );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "set server port to: %u\n", g_config.server_port );
+
+   netio_connect( &g_config );
+}
+
+#define NUM_BUFFER_SZ 50
+
 LRESULT CALLBACK WndProc(
    HWND window_h, UINT message, WPARAM wParam, LPARAM lParam
 ) {
@@ -121,6 +164,7 @@ LRESULT CALLBACK WndProc(
    static HWND server_port_h = (HWND)NULL;
    static HWND save_h = (HWND)NULL;
    HANDLE instance_h = (HANDLE)NULL;
+   char num_buffer[NUM_BUFFER_SZ + 1];
 
    switch( message ) {
    case WM_CREATE:
@@ -133,6 +177,9 @@ LRESULT CALLBACK WndProc(
       SetWindowText( server_addr_h, g_config.server_addr );
       server_port_h = osio_win_add_field(
          window_h, instance_h, "Server port", 70, ID_WIN_SERVER_ADDR );
+      memset( num_buffer, '\0', NUM_BUFFER_SZ + 1 );
+      _ultoa( g_config.server_port, num_buffer, 10 );
+      SetWindowText( server_port_h, num_buffer );
 
       save_h = CreateWindow(
          "button", "&Save", WS_CHILD | WS_VISIBLE | WS_BORDER,
@@ -156,6 +203,10 @@ LRESULT CALLBACK WndProc(
       switch( wParam ) {
       case ID_WIN_MENU_FILE_EXIT:
          osio_win_quit( window_h );
+         break;
+
+      case ID_WIN_SAVE:
+         osio_win_save_fields( client_name_h, server_addr_h, server_port_h );
          break;
       }
       break;
@@ -241,7 +292,7 @@ int osio_ui_setup() {
 
    if( !SetTimer( g_window, ID_TIMER_LOOP, 10, NULL ) ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not setup timer!\n" );
+         "could not set timer!\n" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
@@ -282,10 +333,24 @@ int osio_loop( struct NETIO_CFG* config ) {
    MSG msg;
 
    do {
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "processing windows message queue...\n" );
+#endif
       retval = GetMessage( &msg, NULL, 0, 0 );
       TranslateMessage( &msg );
       DispatchMessage( &msg );
-   } while( 0 < retval );
+
+      if( WM_QUIT == msg.message ) {
+#ifdef DEBUG
+         if( g_running ) {
+            osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+               "found quit message while still running!\n" );
+         }
+#endif
+         g_running = 0;
+      }
+   } while( g_running && 0 < retval );
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "leaving message loop...\n" );
@@ -315,13 +380,25 @@ void osio_printf(
 ) {
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
+   char prefix[OSIO_PRINTF_PREFIX_SZ + 1];
+   static char last_char = '\n';
 
 #ifndef MINPUT_NO_PRINTF
+   memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
+
+   if( '\n' == last_char ) {
+      /* Only produce a prefix on a new line. */
+      snprintf( prefix, OSIO_PRINTF_PREFIX_SZ,
+         "(%d) %s: %d: ", status, file, line );
+   }
 
    va_start( args, fmt );
    vsnprintf( buffer, OSIO_PRINTF_BUFFER_SZ, fmt, args );
    va_end( args );
+
+   assert( 0 < strlen( buffer ) );
+   last_char = buffer[strlen( buffer ) - 1];
 #else
    size_t i = 0,
       i_out = 0;
@@ -333,13 +410,24 @@ void osio_printf(
 
    va_start( args, fmt );
 
+   memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
    memset( itoa_buf, '\0', 50 );
+
+   if( '\n' == last_char ) {
+      /* Only produce a prefix on a new line. */
+      snprintf( prefix, OSIO_PRINTF_PREFIX_SZ,
+         "(%d) %s: %d: ", status, file, line );
+   }
 
    /* Roughly adapted from uprintf for Visual C++ */
 
    for( i = 0 ; '\0' != fmt[i] ; i++ ) {
       c = fmt[i]; /* Separate so we can play tricks below. */
+
+      if( i_out >= OSIO_PRINTF_BUFFER_SZ ) {
+         break;
+      }
  
       if( '%' == last ) {
          /* Conversion specifier encountered. */
@@ -439,7 +527,7 @@ void osio_printf(
       SetWindowText( g_status_label_h, buffer );
    }
 
-   fprintf( g_dbg, "%s", buffer );
+   fprintf( g_dbg, "%s: %s", prefix, buffer );
 }
 
 uint32_t osio_get_time() {
@@ -533,10 +621,10 @@ int PASCAL WinMain(
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
-   /*
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "found USER.EXE at: 0x%04x\n", user_h );
-   */
+#endif /* DEBUG */
 
    g_mouse_event_proc = GetProcAddress( user_h, "mouse_event" ); /* 507a */
    if( NULL == g_mouse_event_proc ) {
@@ -545,10 +633,10 @@ int PASCAL WinMain(
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
-   /*
+#ifdef DEBUG
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-      "found mouse_event at: 0x%04x\n", g_mouse_event_proc );
-   */
+      "found mouse_event at: 0x%08lx\n", g_mouse_event_proc );
+#endif /* DEBUG */
 
    g_keybd_event_proc = GetProcAddress( user_h, "keybd_event" ); /* 4b59 */
    if( NULL == g_keybd_event_proc ) {
@@ -557,10 +645,10 @@ int PASCAL WinMain(
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
-   /*
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-      "found keybd_event at: 0x%04x\n", g_keybd_event_proc );
-   */
+#ifdef DEBUG
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "found keybd_event at: 0x%08lx\n", g_keybd_event_proc );
+#endif /* DEBUG */
 
 #endif /* MINPUT_OS_WIN16 */
 

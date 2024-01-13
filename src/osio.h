@@ -13,7 +13,11 @@
 #define OSIO_MOUSE_RIGHT 0x03
 
 #ifndef OSIO_PRINTF_BUFFER_SZ
-#  define OSIO_PRINTF_BUFFER_SZ 1024
+#  define OSIO_PRINTF_BUFFER_SZ 512
+#endif /* !OSIO_PRINTF_BUFFER_SZ */
+
+#ifndef OSIO_PRINTF_PREFIX_SZ
+#  define OSIO_PRINTF_PREFIX_SZ 128
 #endif /* !OSIO_PRINTF_BUFFER_SZ */
 
 void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config );

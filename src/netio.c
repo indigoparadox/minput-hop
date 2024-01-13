@@ -44,27 +44,27 @@ int netio_connect( struct NETIO_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
 
-   if( 0 > config->socket_fd ) {
-      /* Negative socket! Do not connect! */
-      retval = MINHOP_ERR_PROTOCOL;
-      goto cleanup;
-   }
-
    /* Resolve server address. */
    memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
    servaddr.sin_family = AF_INET;
    servaddr.sin_port = htons( config->server_port );
    servaddr.sin_addr.s_addr = inet_addr( config->server_addr );
 
-   /* Open socket. */
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
-   config->socket_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
-   if( -1 == config->socket_fd ) {
-      /* perror( "socket" ); */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not open socket\n" );
-      goto cleanup;
+   if( 0 == config->socket_fd ) {
+      /* Open socket. */
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "connecting to 0x%08x...\n", servaddr.sin_addr.s_addr );
+      config->socket_fd = socket( AF_INET, SOCK_STREAM, IPPROTO_TCP );
+      if( -1 == config->socket_fd ) {
+         /* perror( "socket" ); */
+         retval = MINHOP_ERR_CONNECT;
+         /* Note: This is not STAT_ERROR because that might produce too many
+          * dialogs, overwhelming Win16! */
+         osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
+            "could not open socket\n" );
+         config->socket_fd = 0;
+         goto cleanup;
+      }
    }
 
    /* Connect socket. */
@@ -76,9 +76,9 @@ int netio_connect( struct NETIO_CFG* config ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "could not connect socket\n" );
       goto cleanup;
-   } else {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO, "connected!\n" );
    }
+
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO, "connected!\n" );
 
    config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
 
@@ -114,7 +114,7 @@ int minhop_process_packets(
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "packet too large! (%lu bytes)\n",
          *p_pkt_buf_sz + recv_sz );
-      retval = MINHOP_ERR_PROTOCOL;
+      retval = MINHOP_ERR_OVERFLOW;
       goto cleanup;
    }
 
@@ -175,7 +175,7 @@ cleanup:
    return retval;
 }
 
-void netio_disconnect( struct NETIO_CFG* config, int force ) {
+void netio_disconnect( struct NETIO_CFG* config ) {
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "closing socket...\n" );
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
@@ -183,7 +183,7 @@ void netio_disconnect( struct NETIO_CFG* config, int force ) {
 #else
    close( config->socket_fd );
 #endif /* MINPUT_OS_WIN */
-   config->socket_fd = force;
+   config->socket_fd = 0;
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "disconnected!\n" );

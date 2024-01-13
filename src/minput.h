@@ -13,6 +13,7 @@
 #define MINHOP_ERR_OS 16
 #define MINHOP_ERR_ARGS 32
 #define MINHOP_ERR_ALLOC 64
+#define MINHOP_ERR_CONNECT 128
 
 #define MINPUT_STAT_DEBUG 1
 #define MINPUT_STAT_ERROR 2
@@ -25,7 +26,7 @@
  * \{
  */
 #define SERVER_ADDR_SZ_MAX 64
-#define CLIENT_NAME_SZ_MAX 64
+#define CLIENT_NAME_SZ_MAX SERVER_ADDR_SZ_MAX
 
 /* \} */ /* minput_constants */
 
