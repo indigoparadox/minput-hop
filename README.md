@@ -27,6 +27,6 @@ This might be simplified somewhat later, but it works for now.
 ## References
 
 - Programming Windows, 3rd Edition - Petzold, Charles
-- [https://www.qemu.org/docs/master/interop/barrier.html](qemu) docs for Barrier protocol information.
+- [qemu](https://www.qemu.org/docs/master/interop/barrier.html) docs for Barrier protocol information.
 - @cvtsi2sd@hachyderm.io for undocumented \*\_event() calls in Windows 3.
 
