@@ -4,13 +4,18 @@
 SOURCES := src/main.c src/synproto.c src/netio.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
-minhop32.exe: CFLAGS := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw -we -DDEBUG
+minhop32.exe: CFLAGS_WATCOM := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw
 RES_PATH_W32 := obj/win32/src/minhop.res
 
-minhop16.exe: CFLAGS := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16 -we -DDEBUG
+minhop16.exe: CFLAGS_WATCOM := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16
 RES_PATH_W16 := obj/win16/src/minhop.res
 
-minhop: CFLAGS := -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall
+minhop: CFLAGS_GCC :=
+
+ifneq ("$(RELEASE)", "RELEASE")
+	CFLAGS_WATCOM += -we -DDEBUG
+	CFLAGS_GCC += -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall
+endif
 
 all: minhop minhop32.exe minhop16.exe
 
@@ -21,7 +26,7 @@ minhop16.exe: $(addprefix obj/win16/,$(OBJECTS)) obj/win16/src/osio_win.o | $(RE
 	wlink system windows name minhop16 lib winsock lib mmsystem fil {$^} option resource $(RES_PATH_W16)
 
 minhop: $(addprefix obj/unix/,$(OBJECTS)) obj/unix/src/osio_unix.o
-	gcc $(CFLAGS) -o "$@" $^
+	gcc $(CFLAGS_GCC) -o "$@" $^
 
 $(RES_PATH_W32): src/minhop.rc
 	wrc -r $< -bt=nt -fo=$@
@@ -31,15 +36,15 @@ $(RES_PATH_W16): src/minhop.rc
 
 obj/win32/%.o: %.c
 	mkdir -p "obj/win32/$(dir $<)"
-	wcc386 $(CFLAGS) -fo=$@ $<
+	wcc386 $(CFLAGS_WATCOM) -fo=$@ $<
 
 obj/win16/%.o: %.c
 	mkdir -p "obj/win16/$(dir $<)"
-	wcc $(CFLAGS) -fo=$@ $<
+	wcc $(CFLAGS_WATCOM) -fo=$@ $<
 
 obj/unix/%.o: %.c
 	mkdir -p "obj/unix/$(dir $<)"
-	$(CC) $(CFLAGS) -c -o "$@" "$<"
+	$(CC) $(CFLAGS_GCC) -c -o "$@" "$<"
 
 clean:
 	rm -rf obj minhop minhop*.exe

@@ -29,16 +29,6 @@ void mouse_event(
 ) {
    WORD exinfo_hi = HIWORD( extra_info );
    WORD exinfo_lo = LOWORD( extra_info );
-   /*
-   WORD segvar = 0;
-
-   __asm {
-      mov segvar, cs
-   }
-
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-      "cs: %04x\n", segvar );
-   */
 
    /* Note that pusha below needs a 286+, but so does Windows 3.1, so... */
    __asm {
@@ -212,7 +202,7 @@ int osio_ui_setup() {
    wc.hInstance = g_instance;
    wc.hIcon = LoadIcon( g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
    wc.hCursor = LoadCursor( 0, IDC_ARROW );
-   wc.hbrBackground = (HBRUSH)( COLOR_BTNFACE + 1 );
+   wc.hbrBackground = (HBRUSH)( COLOR_WINDOW );
    wc.lpszMenuName = "MinhopWindowMenu";
    wc.lpszClassName = "MinhopWindowClass";
 
