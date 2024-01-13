@@ -634,7 +634,7 @@ int PASCAL WinMain(
       goto cleanup;
    }
 #ifdef DEBUG
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "found mouse_event at: 0x%08lx\n", g_mouse_event_proc );
 #endif /* DEBUG */
 

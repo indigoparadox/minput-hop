@@ -35,6 +35,7 @@ int minput_loop_iter(
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "no data received!\n" );
 #endif /* DEBUG */
+   
    } else if( MINHOP_ERR_PROTOCOL == retval ) {
       /* Protocol error also isn't a show-stopper. */
 #ifdef DEBUG
@@ -42,6 +43,13 @@ int minput_loop_iter(
          "protocol error!\n" );
 #endif /* DEBUG */
       retval = 0;
+
+   } else if( MINHOP_ERR_OVERFLOW == retval ) {
+      /* Dump the packet buffer and start from scratch! */
+      *p_pkt_buf_sz = 0;
+      netio_disconnect( config );
+      retval = 0;
+      goto cleanup;
    }
 
 #ifdef DEBUG
