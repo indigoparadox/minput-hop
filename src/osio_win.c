@@ -49,7 +49,7 @@ void mouse_event(
       mov dx, data
       mov si, exinfo_hi
       mov di, exinfo_lo
-      call g_mouse_event_proc
+      call dword ptr [g_mouse_event_proc]
       popa
    }
 }
@@ -77,7 +77,7 @@ void keybd_event(
       mov bh, flags_hi
       mov si, exinfo_hi
       mov di, exinfo_lo
-      call g_keybd_event_proc
+      call dword ptr [g_keybd_event_proc]
       popa
    }
 }
