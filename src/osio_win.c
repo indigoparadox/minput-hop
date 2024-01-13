@@ -4,6 +4,13 @@
 #include "minhopr.h"
 
 #ifdef MINPUT_OS_WIN16
+#  define OSIO_WIN_EDIT_CTL_STYLE (WS_CHILD | WS_VISIBLE | WS_BORDER)
+#elif defined( MINPUT_OS_WIN32 )
+/* TODO */
+#  define OSIO_WIN_EDIT_CTL_STYLE (WS_CHILD | WS_VISIBLE | WS_BORDER)
+#endif /* MINPUT_OS_WIN */
+
+#ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
 FARPROC g_mouse_event_proc = 0;
@@ -78,6 +85,9 @@ UINT WM_TASKBARCREATED = 0;
 
 HWND g_window = NULL;
 HWND g_status_label_h = NULL;
+#ifdef DEBUG
+HWND g_key_label_h = NULL;
+#endif /* DEBUG */
 HINSTANCE g_instance = NULL;
 int g_cmd_show = 0;
 char* g_pkt_buf = NULL;
@@ -110,13 +120,15 @@ static HWND osio_win_add_field(
 ) {
    HWND out_h = (HWND)NULL;
 
+   /* Create a label on the left and a text field on the right. */
+
    CreateWindow(
       "static", label, WS_CHILD | WS_VISIBLE,
-      10, y, 110, 25, parent_h, NULL,
+      10, y, 110, 20, parent_h, NULL,
       instance_h, NULL );
    out_h = CreateWindow(
-      "edit", NULL, WS_CHILD | WS_VISIBLE | WS_BORDER,
-      120, y, 160, 25, parent_h, (HMENU)id,
+      "edit", NULL, OSIO_WIN_EDIT_CTL_STYLE,
+      120, y - 5, 160, 25, parent_h, (HMENU)id,
       instance_h, NULL );
 
    return out_h;
@@ -154,8 +166,6 @@ static void osio_win_save_fields(
    netio_connect( &g_config );
 }
 
-#define NUM_BUFFER_SZ 50
-
 LRESULT CALLBACK WndProc(
    HWND window_h, UINT message, WPARAM wParam, LPARAM lParam
 ) {
@@ -164,7 +174,9 @@ LRESULT CALLBACK WndProc(
    static HWND server_port_h = (HWND)NULL;
    static HWND save_h = (HWND)NULL;
    HANDLE instance_h = (HANDLE)NULL;
-   char num_buffer[NUM_BUFFER_SZ + 1];
+   char num_buffer[OSIO_NUM_BUFFER_SZ + 1];
+
+   /* Handle window messages. */
 
    switch( message ) {
    case WM_CREATE:
@@ -177,7 +189,7 @@ LRESULT CALLBACK WndProc(
       SetWindowText( server_addr_h, g_config.server_addr );
       server_port_h = osio_win_add_field(
          window_h, instance_h, "Server port", 70, ID_WIN_SERVER_ADDR );
-      memset( num_buffer, '\0', NUM_BUFFER_SZ + 1 );
+      memset( num_buffer, '\0', OSIO_NUM_BUFFER_SZ + 1 );
       _ultoa( g_config.server_port, num_buffer, 10 );
       SetWindowText( server_port_h, num_buffer );
 
@@ -185,6 +197,13 @@ LRESULT CALLBACK WndProc(
          "button", "&Save", WS_CHILD | WS_VISIBLE | WS_BORDER,
          10, 100, 60, 30, window_h, (HMENU)ID_WIN_SAVE,
          instance_h, NULL );
+
+#ifdef DEBUG
+      g_key_label_h = CreateWindow(
+         "static", "", WS_CHILD | WS_VISIBLE,
+         80, 95, 200, 45, window_h, NULL,
+         instance_h, NULL );
+#endif /* DEBUG */
 
       g_status_label_h = CreateWindow(
          "static", "", WS_CHILD | WS_VISIBLE,
@@ -212,6 +231,7 @@ LRESULT CALLBACK WndProc(
       break;
 
    case WM_CLOSE:
+      /* Quit program on main window close. */
       osio_win_quit( window_h );
       break;
       
@@ -249,6 +269,7 @@ int osio_ui_setup() {
 #endif /* MINPUT_OS_WIN32 */
 
    /* Create window class. */
+
    wc.lpfnWndProc = (WNDPROC)&WndProc;
    wc.hInstance = g_instance;
    wc.hIcon = LoadIcon( g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
@@ -405,14 +426,14 @@ void osio_printf(
    char last = '\0';
    int spec_fmt = 0;
    union FMT_SPEC spec;
-   char itoa_buf[50];
+   char itoa_buf[OSIO_NUM_BUFFER_SZ + 1];
    char c;
 
    va_start( args, fmt );
 
    memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
-   memset( itoa_buf, '\0', 50 );
+   memset( itoa_buf, '\0', OSIO_NUM_BUFFER_SZ + 1 );
 
    if( '\n' == last_char ) {
       /* Only produce a prefix on a new line. */
@@ -513,7 +534,7 @@ void osio_printf(
       } else if( '%' != c ) {
          spec_fmt = 0;
          buffer[i_out++] = c;
-         memset( itoa_buf, '\0', 50 );
+         memset( itoa_buf, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
       }
       last = c;
    }
@@ -566,23 +587,135 @@ void osio_mouse_up( uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn ) {
       mouse_x, mouse_y, 0, 0 );
 }
 
-static uint16_t osio_win_key( uint16_t key_id ) {
+static uint32_t osio_win_key(
+   uint16_t key_id, uint16_t key_mod, uint16_t key_btn
+) {
+   uint32_t key_id_vk = 0;
+
    /* TODO: Raw key_id is not... quite... right... */
    if( key_id >= 97 && key_id <= 122 ) {
       /* Translate uppercase to lowercase. */
       key_id -= 32;
    }
-   return key_id;
+
+   /* Get scancode by subtracting 9 and stashing in hi word. */
+   key_id_vk |= ((uint32_t)(key_btn - 9) << 16);
+
+   /* Figure out virtual code by brute force. */
+   switch( key_id ) {
+      /*
+      case : key_id_vk |= ((VK_CANCEL) & 0xffff);
+      case : key_id_vk |= ((VK_BACK) & 0xffff);
+      */
+      case 0xef09: key_id_vk |= ((VK_TAB) & 0xffff);
+      /*
+      case 0x: key_id_vk |= ((VK_CLEAR) & 0xffff);
+      */
+      case 0xef0d: key_id_vk |= ((VK_RETURN) & 0xffff);
+      case 0xefe1: key_id_vk |= ((VK_SHIFT) & 0xffff);
+      case 0xefe2: key_id_vk |= ((VK_SHIFT) & 0xffff);
+      case 0xefe3: key_id_vk |= ((VK_CONTROL) & 0xffff);
+      case 0xefe4: key_id_vk |= ((VK_CONTROL) & 0xffff);
+      case 0xef67: key_id_vk |= ((VK_MENU) & 0xffff);
+      case 0xef13: key_id_vk |= ((VK_PAUSE) & 0xffff);
+      /*
+      case 0x: key_id_vk |= ((VK_CAPITAL) & 0xffff);
+      */
+      case 0xef1b: key_id_vk |= ((VK_ESCAPE) & 0xffff);
+      case 0x0020: key_id_vk |= ((VK_SPACE) & 0xffff);
+      /*
+      case 0x: key_id_vk |= ((VK_PRIOR) & 0xffff);
+      case 0x: key_id_vk |= ((VK_NEXT) & 0xffff);
+      */
+      case 0xef57: key_id_vk |= ((VK_END) & 0xffff);
+      case 0xef50: key_id_vk |= ((VK_HOME) & 0xffff);
+      case 0xef51: key_id_vk |= ((VK_LEFT) & 0xffff);
+      case 0xef52: key_id_vk |= ((VK_UP) & 0xffff);
+      case 0xef53: key_id_vk |= ((VK_RIGHT) & 0xffff);
+      case 0xef54: key_id_vk |= ((VK_DOWN) & 0xffff);
+      /*
+      case 0x: key_id_vk |= ((VK_SELECT) & 0xffff);
+      case 0x: key_id_vk |= ((VK_PRINT) & 0xffff);
+      case 0x: key_id_vk |= ((VK_EXECUTE) & 0xffff);
+      case 0x: key_id_vk |= ((VK_SNAPSHOT) & 0xffff);
+      */
+      case 0xef63: key_id_vk |= ((VK_INSERT) & 0xffff);
+      case 0xefff: key_id_vk |= ((VK_DELETE) & 0xffff);
+      /* case 0x: key_id_vk |= ((VK_HELP) & 0xffff); */
+      case 0xefb0: key_id_vk |= ((VK_NUMPAD0) & 0xffff);
+      case 0xefb1: key_id_vk |= ((VK_NUMPAD1) & 0xffff);
+      case 0xefb2: key_id_vk |= ((VK_NUMPAD2) & 0xffff);
+      case 0xefb3: key_id_vk |= ((VK_NUMPAD3) & 0xffff);
+      case 0xefb4: key_id_vk |= ((VK_NUMPAD4) & 0xffff);
+      case 0xefb5: key_id_vk |= ((VK_NUMPAD5) & 0xffff);
+      case 0xefb6: key_id_vk |= ((VK_NUMPAD6) & 0xffff);
+      case 0xefb7: key_id_vk |= ((VK_NUMPAD7) & 0xffff);
+      case 0xefb8: key_id_vk |= ((VK_NUMPAD8) & 0xffff);
+      case 0xefb9: key_id_vk |= ((VK_NUMPAD9) & 0xffff);
+      case 0xefaa: key_id_vk |= ((VK_MULTIPLY) & 0xffff);
+      case 0xefab: key_id_vk |= ((VK_ADD) & 0xffff);
+      /* case 0x: key_id_vk |= ((VK_SEPARATOR) & 0xffff); */
+      case 0xefad: key_id_vk |= ((VK_SUBTRACT) & 0xffff);
+      case 0xefae: key_id_vk |= ((VK_DECIMAL) & 0xffff);
+      case 0xefaf: key_id_vk |= ((VK_DIVIDE) & 0xffff);
+      case 0xefbe: key_id_vk |= ((VK_F1) & 0xffff);
+      case 0xefbf: key_id_vk |= ((VK_F2) & 0xffff);
+      case 0xefc0: key_id_vk |= ((VK_F3) & 0xffff);
+      case 0xefc1: key_id_vk |= ((VK_F4) & 0xffff);
+      case 0xefc2: key_id_vk |= ((VK_F5) & 0xffff);
+      case 0xefc3: key_id_vk |= ((VK_F6) & 0xffff);
+      case 0xefc4: key_id_vk |= ((VK_F7) & 0xffff);
+      case 0xefc5: key_id_vk |= ((VK_F8) & 0xffff);
+      case 0xefc6: key_id_vk |= ((VK_F9) & 0xffff);
+      case 0xefc7: key_id_vk |= ((VK_F10) & 0xffff);
+      case 0xefc8: key_id_vk |= ((VK_F11) & 0xffff);
+      case 0xefc9: key_id_vk |= ((VK_F12) & 0xffff);
+      /*
+      case 0x: key_id_vk |= ((VK_F13) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F14) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F15) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F16) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F17) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F18) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F19) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F20) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F21) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F22) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F23) & 0xffff);
+      case 0x: key_id_vk |= ((VK_F24) & 0xffff);
+      */
+      case 0xef7f: key_id_vk |= ((VK_NUMLOCK) & 0xffff);
+      /* case 0x: key_id_vk |= ((VK_SCROLL) & 0xffff); */
+      default: key_id_vk |= ((key_id) & 0xffff);
+   }
+
+   return key_id_vk;
 }
 
 void osio_key_down( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   key_id = osio_win_key( key_id );
-   keybd_event( key_id, 0, 0, 0 );
+   uint32_t key_id_vk = 0;
+#ifdef DEBUG
+   char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
+#endif /* DEBUG */
+
+   key_id_vk = osio_win_key( key_id, key_mod, key_btn );
+
+#ifdef DEBUG
+   memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
+   sprintf( buffer, /* Use sprintf for VC 1.5. */
+      "id: %c (0x%04x) mod: 0x%04x btn: 0x%04x tlv: 0x%04x tls: %04x",
+      key_id, key_id, key_mod, key_btn,
+      LOWORD( key_id_vk ), HIWORD( key_id_vk ) );
+   SetWindowText( g_key_label_h, buffer );
+#endif /* DEBUG */
+
+   keybd_event( LOWORD( key_id_vk ), HIWORD( key_id_vk ), 0, 0 );
 }
 
 void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   key_id = osio_win_key( key_id );
-   keybd_event( key_id, 0, KEYEVENTF_KEYUP, 0 );
+   uint32_t key_id_vk = 0;
+   key_id_vk = osio_win_key( key_id, key_mod, key_btn );
+   keybd_event( LOWORD( key_id_vk ), HIWORD( key_id_vk ), KEYEVENTF_KEYUP, 0 );
 }
 
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
@@ -667,6 +800,7 @@ int PASCAL WinMain(
    }
 
 #ifdef MINPUT_NO_ARGS
+   /* Hardcode network config. */
    strcpy( g_config.client_name, MINPUT_S_CLIENT_NAME );
    strcpy( g_config.server_addr, MINPUT_S_SERVER_ADDR );
    g_config.server_port = 24800;

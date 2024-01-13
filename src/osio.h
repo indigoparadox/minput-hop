@@ -20,6 +20,10 @@
 #  define OSIO_PRINTF_PREFIX_SZ 128
 #endif /* !OSIO_PRINTF_BUFFER_SZ */
 
+#ifndef OSIO_NUM_BUFFER_SZ
+#  define OSIO_NUM_BUFFER_SZ 50
+#endif /* OSIO_NUM_BUFFER_SZ */
+
 void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config );
 
 int osio_ui_setup();
