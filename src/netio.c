@@ -43,6 +43,14 @@ cleanup:
 int netio_connect( struct NETIO_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
+#if defined( MINPUT_OS_WIN32 ) || defined( MINPUT_OS_WIN16 )
+   uint32_t timeout = 1000; /* 1000 ms = 1sec */
+#else
+   struct timeval timeout;
+
+   memset( &timeout, '\0', sizeof( struct timeval ) );
+   timeout.tv_sec = 1;
+#endif /* MINPUT_OS_WIN32 || MINPUT_OS_WIN16 */
 
    /* Resolve server address. */
    memset( &servaddr, 0, sizeof( struct sockaddr_in ) );
@@ -66,6 +74,9 @@ int netio_connect( struct NETIO_CFG* config ) {
          goto cleanup;
       }
    }
+
+   setsockopt( config->socket_fd, (int)SOL_SOCKET, SO_RCVTIMEO,
+      (const char*)&timeout, sizeof( timeout ) );
 
    /* Connect socket. */
    retval = connect(

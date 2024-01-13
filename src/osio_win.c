@@ -548,6 +548,11 @@ void osio_mouse_move( uint16_t mouse_x, uint16_t mouse_y ) {
 }
 
 void osio_mouse_down( uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn ) {
+
+   /* TODO: Detect if the minput hop window is under the mouse and, if so,
+    *       automatically follow up with a mouse_up.
+    */
+
    mouse_event(
       OSIO_MOUSE_LEFT == mouse_btn ?
          MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_RIGHTDOWN,
