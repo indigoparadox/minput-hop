@@ -603,14 +603,14 @@ static void osio_win_key(
    /* Get scancode by subtracting 8 (no, I don't know why!) */
    *key_btn -= 8;
 
-   if( *key_id >= 97 && *key_id <= 122 ) {
+   if( *key_id >= 0x61 && *key_id <= 0x7a ) {
       /* Translate uppercase to lowercase by ASCII offset. */
       *key_id -= 32;
    } else {
       /* Figure out virtual code by brute force. */
       switch( *key_id ) {
-         case 0x60: *key_id = 0xc0; break;
-         case 0x7e: *key_id = 0xc0; break;
+         case 0x60: *key_id = 0xc0; break; /* ` */
+         case 0x7e: *key_id = 0xc0; break; /* ~ */
          case 0x31: *key_id = '1'; break;
          case 0x21: *key_id = '1'; break;
          case 0x32: *key_id = '2'; break;
@@ -631,26 +631,26 @@ static void osio_win_key(
          case 0x39: *key_id = '9'; break;
          case 0x29: *key_id = '0'; break;
          case 0x30: *key_id = '0'; break;
-         case 0x2d: *key_id = '-'; break;
-         case 0x5f: *key_id = '-'; break;
-         case 0x2b: *key_id = '='; break;
-         case 0x3d: *key_id = '='; break;
-         case 0x2c: *key_id = ','; break;
-         case 0x3c: *key_id = ','; break;
-         case 0x2e: *key_id = '.'; break;
-         case 0x3e: *key_id = '.'; break;
-         case 0x2f: *key_id = '/'; break;
-         case 0x3f: *key_id = '/'; break;
-         case 0x3a: *key_id = ';'; break;
-         case 0x3b: *key_id = ';'; break;
-         case 0x22: *key_id = '\''; break;
-         case 0x27: *key_id = '\''; break;
-         case 0x5b: *key_id = '['; break;
-         case 0x7b: *key_id = '['; break;
-         case 0x5d: *key_id = ']'; break;
-         case 0x7d: *key_id = ']'; break;
-         case 0x5c: *key_id = '\\'; break;
-         case 0x7c: *key_id = '\\'; break;
+         case 0x2d: *key_id = 0xbd; break; /* - */
+         case 0x5f: *key_id = 0xbd; break; /* _ */
+         case 0x2b: *key_id = 0xbb; break; /* + */
+         case 0x3d: *key_id = 0xbb; break; /* = */
+         case 0x2c: *key_id = 0xbc; break; /* , */
+         case 0x3c: *key_id = 0xbc; break; /* < */
+         case 0x2e: *key_id = 0xbe; break; /* . */
+         case 0x3e: *key_id = 0xbe; break; /* > */
+         case 0x2f: *key_id = 0xbf; break; /* / */
+         case 0x3f: *key_id = 0xbf; break; /* ? */
+         case 0x3a: *key_id = 0xba; break; /* : */
+         case 0x3b: *key_id = 0xba; break; /* ; */
+         case 0x22: *key_id = 0xde; break; /* " */
+         case 0x27: *key_id = 0xde; break; /* ' */
+         case 0x5b: *key_id = 0xdb; break; /* [ */
+         case 0x7b: *key_id = 0xdb; break; /* [ */
+         case 0x5d: *key_id = 0xdd; break; /* ] */
+         case 0x7d: *key_id = 0xdd; break; /* ] */
+         case 0x5c: *key_id = 0xdc; break; /* \\ */
+         case 0x7c: *key_id = 0xdc; break; /* | */
          /*
           * Blank template for copy/pasting:
          case 0x: *key_id = ; break;
