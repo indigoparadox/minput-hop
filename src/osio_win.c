@@ -4,13 +4,6 @@
 #include "minhopr.h"
 
 #ifdef MINPUT_OS_WIN16
-#  define OSIO_WIN_EDIT_CTL_STYLE (WS_CHILD | WS_VISIBLE | WS_BORDER)
-#elif defined( MINPUT_OS_WIN32 )
-/* TODO */
-#  define OSIO_WIN_EDIT_CTL_STYLE (WS_CHILD | WS_VISIBLE | WS_BORDER)
-#endif /* MINPUT_OS_WIN */
-
-#ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
 FARPROC g_mouse_event_proc = 0;
@@ -122,8 +115,15 @@ static HWND osio_win_add_field(
       "static", label, WS_CHILD | WS_VISIBLE,
       10, y, 110, 20, parent_h, NULL,
       instance_h, NULL );
-   out_h = CreateWindow(
-      "edit", NULL, OSIO_WIN_EDIT_CTL_STYLE,
+   out_h = CreateWindowEx(
+#ifdef MINPUT_OS_WIN16
+      0,
+#else
+      /* Use 3D look in 32-bit Windows. */
+      WS_EX_CLIENTEDGE,
+#endif /* MINPUT_OS_WIN16 */
+      "edit", NULL,
+      WS_CHILD | WS_VISIBLE | WS_BORDER,
       120, y - 5, 160, 25, parent_h, (HMENU)id,
       instance_h, NULL );
 
@@ -287,7 +287,7 @@ int osio_ui_setup() {
       0,
       "MinhopWindowClass",
       "Minput Hop",
-      WS_OVERLAPPEDWINDOW,
+      WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
       CW_USEDEFAULT,
       CW_USEDEFAULT,
       300,
