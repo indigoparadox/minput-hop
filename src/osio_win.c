@@ -60,7 +60,6 @@ void keybd_event(
 
    /* TODO: Extended key flag. */
 
-   /* TODO Test this. */
    if( KEYEVENTF_KEYUP == (KEYEVENTF_KEYUP & flags) ) {
       flags_hi = 0x80;
    }
@@ -81,22 +80,19 @@ void keybd_event(
 
 #endif /* MINPUT_OS_WIN16 */
 
-UINT WM_TASKBARCREATED = 0;
-
-HWND g_window = NULL;
-HWND g_status_label_h = NULL;
+static UINT WM_TASKBARCREATED = 0;
+static HWND g_window = NULL;
+static HWND g_status_label_h = NULL;
 #ifdef DEBUG
-HWND g_key_label_h = NULL;
+/* Used for keycode debugging in osio_key_down() below. */
+static HWND g_key_label_h = NULL;
 #endif /* DEBUG */
-HINSTANCE g_instance = NULL;
-int g_cmd_show = 0;
-char* g_pkt_buf = NULL;
-uint32_t g_pkt_buf_sz = 0;
-struct NETIO_CFG g_config;
-int g_running = 1;
-
+static HINSTANCE g_instance = NULL;
+static int g_cmd_show = 0;
+static struct NETIO_CFG g_config;
+static int g_running = 1;
 #ifdef MINPUT_OS_WIN32
-NOTIFYICONDATA g_notify_icon_data;
+static NOTIFYICONDATA g_notify_icon_data;
 #endif /* MINPUT_OS_WIN32 */
 
 static void osio_win_quit( HWND window_h ) {
@@ -568,7 +564,9 @@ void osio_mouse_move( uint16_t mouse_x, uint16_t mouse_y ) {
    SetCursorPos( mouse_x, mouse_y );
 }
 
-void osio_mouse_down( uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn ) {
+void osio_mouse_down(
+   uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn
+) {
 
    /* TODO: Detect if the minput hop window is under the mouse and, if so,
     *       automatically follow up with a mouse_up.
@@ -587,135 +585,183 @@ void osio_mouse_up( uint16_t mouse_x, uint16_t mouse_y, uint16_t mouse_btn ) {
       mouse_x, mouse_y, 0, 0 );
 }
 
-static uint32_t osio_win_key(
-   uint16_t key_id, uint16_t key_mod, uint16_t key_btn
+static void osio_win_key(
+   uint16_t* key_id, uint16_t key_mod, uint16_t* key_btn
 ) {
    uint32_t key_id_vk = 0;
 
-   /* TODO: Raw key_id is not... quite... right... */
-   if( key_id >= 97 && key_id <= 122 ) {
-      /* Translate uppercase to lowercase. */
-      key_id -= 32;
+   /* This is ugly and basically brute force... the translations below were
+    * derived by sending key presses to a Win9x client and observing what
+    * synergy produced for a key ID for each, and then matching them to
+    * keycodes from Spy++.
+    *
+    * It's also probably *highly* specific to your keyboard layout... this
+    * is a standard US keyboard, but please feel free to submit pull requests
+    * for other keyboards if you like!
+    */
+
+   /* Get scancode by subtracting 8 (no, I don't know why!) */
+   *key_btn -= 8;
+
+   if( *key_id >= 97 && *key_id <= 122 ) {
+      /* Translate uppercase to lowercase by ASCII offset. */
+      *key_id -= 32;
+   } else {
+      /* Figure out virtual code by brute force. */
+      switch( *key_id ) {
+         case 0x60: *key_id = 0xc0; break;
+         case 0x7e: *key_id = 0xc0; break;
+         case 0x31: *key_id = '1'; break;
+         case 0x21: *key_id = '1'; break;
+         case 0x32: *key_id = '2'; break;
+         case 0x40: *key_id = '2'; break;
+         case 0x23: *key_id = '3'; break;
+         case 0x33: *key_id = '3'; break;
+         case 0x24: *key_id = '4'; break;
+         case 0x34: *key_id = '4'; break;
+         case 0x25: *key_id = '5'; break;
+         case 0x35: *key_id = '5'; break;
+         case 0x36: *key_id = '6'; break;
+         case 0x5e: *key_id = '6'; break;
+         case 0x26: *key_id = '7'; break;
+         case 0x37: *key_id = '7'; break;
+         case 0x2a: *key_id = '8'; break;
+         case 0x38: *key_id = '8'; break;
+         case 0x28: *key_id = '9'; break;
+         case 0x39: *key_id = '9'; break;
+         case 0x29: *key_id = '0'; break;
+         case 0x30: *key_id = '0'; break;
+         case 0x2d: *key_id = '-'; break;
+         case 0x5f: *key_id = '-'; break;
+         case 0x2b: *key_id = '='; break;
+         case 0x3d: *key_id = '='; break;
+         case 0x2c: *key_id = ','; break;
+         case 0x3c: *key_id = ','; break;
+         case 0x2e: *key_id = '.'; break;
+         case 0x3e: *key_id = '.'; break;
+         case 0x2f: *key_id = '/'; break;
+         case 0x3f: *key_id = '/'; break;
+         case 0x3a: *key_id = ';'; break;
+         case 0x3b: *key_id = ';'; break;
+         case 0x22: *key_id = '\''; break;
+         case 0x27: *key_id = '\''; break;
+         case 0x5b: *key_id = '['; break;
+         case 0x7b: *key_id = '['; break;
+         case 0x5d: *key_id = ']'; break;
+         case 0x7d: *key_id = ']'; break;
+         case 0x5c: *key_id = '\\'; break;
+         case 0x7c: *key_id = '\\'; break;
+         /*
+          * Blank template for copy/pasting:
+         case 0x: *key_id = ; break;
+         */
+         case 0xef08: *key_id = ((VK_BACK) & 0xffff); break;
+         case 0xef09: *key_id = ((VK_TAB) & 0xffff); break;
+         case 0xef0d: *key_id = ((VK_RETURN) & 0xffff); break;
+         case 0xefe1: *key_id = ((VK_SHIFT) & 0xffff); break;
+         case 0xefe2: *key_id = ((VK_SHIFT) & 0xffff); break;
+         case 0xefe3: *key_id = ((VK_CONTROL) & 0xffff); break;
+         case 0xefe4: *key_id = ((VK_CONTROL) & 0xffff); break;
+         case 0xefe9: *key_id = ((VK_MENU) & 0xffff); break;
+         case 0xef13: *key_id = ((VK_PAUSE) & 0xffff); break;
+         case 0xef1b: *key_id = ((VK_ESCAPE) & 0xffff); break;
+         case 0x0020: *key_id = ((VK_SPACE) & 0xffff); break;
+         case 0xef55: *key_id = ((VK_PRIOR) & 0xffff); break;
+         case 0xef56: *key_id = ((VK_NEXT) & 0xffff); break;
+         case 0xef57: *key_id = ((VK_END) & 0xffff); break;
+         case 0xef50: *key_id = ((VK_HOME) & 0xffff); break;
+         case 0xef51: *key_id = ((VK_LEFT) & 0xffff); break;
+         case 0xef52: *key_id = ((VK_UP) & 0xffff); break;
+         case 0xef53: *key_id = ((VK_RIGHT) & 0xffff); break;
+         case 0xef54: *key_id = ((VK_DOWN) & 0xffff); break;
+         case 0xef61: *key_id = ((VK_SNAPSHOT) & 0xffff); break;
+         case 0xef63: *key_id = ((VK_INSERT) & 0xffff); break;
+         case 0xefff: *key_id = ((VK_DELETE) & 0xffff); break;
+         case 0xefb0: *key_id = ((VK_NUMPAD0) & 0xffff); break;
+         case 0xefb1: *key_id = ((VK_NUMPAD1) & 0xffff); break;
+         case 0xefb2: *key_id = ((VK_NUMPAD2) & 0xffff); break;
+         case 0xefb3: *key_id = ((VK_NUMPAD3) & 0xffff); break;
+         case 0xefb4: *key_id = ((VK_NUMPAD4) & 0xffff); break;
+         case 0xefb5: *key_id = ((VK_NUMPAD5) & 0xffff); break;
+         case 0xefb6: *key_id = ((VK_NUMPAD6) & 0xffff); break;
+         case 0xefb7: *key_id = ((VK_NUMPAD7) & 0xffff); break;
+         case 0xefb8: *key_id = ((VK_NUMPAD8) & 0xffff); break;
+         case 0xefb9: *key_id = ((VK_NUMPAD9) & 0xffff); break;
+         case 0xefaa: *key_id = ((VK_MULTIPLY) & 0xffff); break;
+         case 0xefab: *key_id = ((VK_ADD) & 0xffff); break;
+         case 0xefad: *key_id = ((VK_SUBTRACT) & 0xffff); break;
+         case 0xefae: *key_id = ((VK_DECIMAL) & 0xffff); break;
+         case 0xefaf: *key_id = ((VK_DIVIDE) & 0xffff); break;
+         case 0xefbe: *key_id = ((VK_F1) & 0xffff); break;
+         case 0xefbf: *key_id = ((VK_F2) & 0xffff); break;
+         case 0xefc0: *key_id = ((VK_F3) & 0xffff); break;
+         case 0xefc1: *key_id = ((VK_F4) & 0xffff); break;
+         case 0xefc2: *key_id = ((VK_F5) & 0xffff); break;
+         case 0xefc3: *key_id = ((VK_F6) & 0xffff); break;
+         case 0xefc4: *key_id = ((VK_F7) & 0xffff); break;
+         case 0xefc5: *key_id = ((VK_F8) & 0xffff); break;
+         case 0xefc6: *key_id = ((VK_F9) & 0xffff); break;
+         case 0xefc7: *key_id = ((VK_F10) & 0xffff); break;
+         case 0xefc8: *key_id = ((VK_F11) & 0xffff); break;
+         case 0xefc9: *key_id = ((VK_F12) & 0xffff); break;
+         case 0xef7f: *key_id = ((VK_NUMLOCK) & 0xffff); break;
+         /*
+         Don't have these keys, apparently? So couldn't test for them!
+         case : key_id_vk |= ((VK_CANCEL) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_CLEAR) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_CAPITAL) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_SELECT) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_PRINT) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_EXECUTE) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_HELP) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_SEPARATOR) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F13) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F14) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F15) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F16) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F17) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F18) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F19) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F20) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F21) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F22) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F23) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_F24) & 0xffff); break;
+         case 0x: key_id_vk |= ((VK_SCROLL) & 0xffff); break;
+         */
+      }
    }
-
-   /* Get scancode by subtracting 9 and stashing in hi word. */
-   key_id_vk |= ((uint32_t)(key_btn - 9) << 16);
-
-   /* Figure out virtual code by brute force. */
-   switch( key_id ) {
-      /*
-      case : key_id_vk |= ((VK_CANCEL) & 0xffff);
-      case : key_id_vk |= ((VK_BACK) & 0xffff);
-      */
-      case 0xef09: key_id_vk |= ((VK_TAB) & 0xffff);
-      /*
-      case 0x: key_id_vk |= ((VK_CLEAR) & 0xffff);
-      */
-      case 0xef0d: key_id_vk |= ((VK_RETURN) & 0xffff);
-      case 0xefe1: key_id_vk |= ((VK_SHIFT) & 0xffff);
-      case 0xefe2: key_id_vk |= ((VK_SHIFT) & 0xffff);
-      case 0xefe3: key_id_vk |= ((VK_CONTROL) & 0xffff);
-      case 0xefe4: key_id_vk |= ((VK_CONTROL) & 0xffff);
-      case 0xef67: key_id_vk |= ((VK_MENU) & 0xffff);
-      case 0xef13: key_id_vk |= ((VK_PAUSE) & 0xffff);
-      /*
-      case 0x: key_id_vk |= ((VK_CAPITAL) & 0xffff);
-      */
-      case 0xef1b: key_id_vk |= ((VK_ESCAPE) & 0xffff);
-      case 0x0020: key_id_vk |= ((VK_SPACE) & 0xffff);
-      /*
-      case 0x: key_id_vk |= ((VK_PRIOR) & 0xffff);
-      case 0x: key_id_vk |= ((VK_NEXT) & 0xffff);
-      */
-      case 0xef57: key_id_vk |= ((VK_END) & 0xffff);
-      case 0xef50: key_id_vk |= ((VK_HOME) & 0xffff);
-      case 0xef51: key_id_vk |= ((VK_LEFT) & 0xffff);
-      case 0xef52: key_id_vk |= ((VK_UP) & 0xffff);
-      case 0xef53: key_id_vk |= ((VK_RIGHT) & 0xffff);
-      case 0xef54: key_id_vk |= ((VK_DOWN) & 0xffff);
-      /*
-      case 0x: key_id_vk |= ((VK_SELECT) & 0xffff);
-      case 0x: key_id_vk |= ((VK_PRINT) & 0xffff);
-      case 0x: key_id_vk |= ((VK_EXECUTE) & 0xffff);
-      case 0x: key_id_vk |= ((VK_SNAPSHOT) & 0xffff);
-      */
-      case 0xef63: key_id_vk |= ((VK_INSERT) & 0xffff);
-      case 0xefff: key_id_vk |= ((VK_DELETE) & 0xffff);
-      /* case 0x: key_id_vk |= ((VK_HELP) & 0xffff); */
-      case 0xefb0: key_id_vk |= ((VK_NUMPAD0) & 0xffff);
-      case 0xefb1: key_id_vk |= ((VK_NUMPAD1) & 0xffff);
-      case 0xefb2: key_id_vk |= ((VK_NUMPAD2) & 0xffff);
-      case 0xefb3: key_id_vk |= ((VK_NUMPAD3) & 0xffff);
-      case 0xefb4: key_id_vk |= ((VK_NUMPAD4) & 0xffff);
-      case 0xefb5: key_id_vk |= ((VK_NUMPAD5) & 0xffff);
-      case 0xefb6: key_id_vk |= ((VK_NUMPAD6) & 0xffff);
-      case 0xefb7: key_id_vk |= ((VK_NUMPAD7) & 0xffff);
-      case 0xefb8: key_id_vk |= ((VK_NUMPAD8) & 0xffff);
-      case 0xefb9: key_id_vk |= ((VK_NUMPAD9) & 0xffff);
-      case 0xefaa: key_id_vk |= ((VK_MULTIPLY) & 0xffff);
-      case 0xefab: key_id_vk |= ((VK_ADD) & 0xffff);
-      /* case 0x: key_id_vk |= ((VK_SEPARATOR) & 0xffff); */
-      case 0xefad: key_id_vk |= ((VK_SUBTRACT) & 0xffff);
-      case 0xefae: key_id_vk |= ((VK_DECIMAL) & 0xffff);
-      case 0xefaf: key_id_vk |= ((VK_DIVIDE) & 0xffff);
-      case 0xefbe: key_id_vk |= ((VK_F1) & 0xffff);
-      case 0xefbf: key_id_vk |= ((VK_F2) & 0xffff);
-      case 0xefc0: key_id_vk |= ((VK_F3) & 0xffff);
-      case 0xefc1: key_id_vk |= ((VK_F4) & 0xffff);
-      case 0xefc2: key_id_vk |= ((VK_F5) & 0xffff);
-      case 0xefc3: key_id_vk |= ((VK_F6) & 0xffff);
-      case 0xefc4: key_id_vk |= ((VK_F7) & 0xffff);
-      case 0xefc5: key_id_vk |= ((VK_F8) & 0xffff);
-      case 0xefc6: key_id_vk |= ((VK_F9) & 0xffff);
-      case 0xefc7: key_id_vk |= ((VK_F10) & 0xffff);
-      case 0xefc8: key_id_vk |= ((VK_F11) & 0xffff);
-      case 0xefc9: key_id_vk |= ((VK_F12) & 0xffff);
-      /*
-      case 0x: key_id_vk |= ((VK_F13) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F14) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F15) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F16) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F17) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F18) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F19) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F20) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F21) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F22) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F23) & 0xffff);
-      case 0x: key_id_vk |= ((VK_F24) & 0xffff);
-      */
-      case 0xef7f: key_id_vk |= ((VK_NUMLOCK) & 0xffff);
-      /* case 0x: key_id_vk |= ((VK_SCROLL) & 0xffff); */
-      default: key_id_vk |= ((key_id) & 0xffff);
-   }
-
-   return key_id_vk;
 }
 
 void osio_key_down( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   uint32_t key_id_vk = 0;
 #ifdef DEBUG
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
 #endif /* DEBUG */
 
-   key_id_vk = osio_win_key( key_id, key_mod, key_btn );
-
 #ifdef DEBUG
+   /* In DEBUG builds, print details on keypresses in the main window. */
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
    sprintf( buffer, /* Use sprintf for VC 1.5. */
-      "id: %c (0x%04x) mod: 0x%04x btn: 0x%04x tlv: 0x%04x tls: %04x",
-      key_id, key_id, key_mod, key_btn,
-      LOWORD( key_id_vk ), HIWORD( key_id_vk ) );
+      "id: %c (0x%04x) mod: 0x%04x btn: 0x%04x ",
+      key_id, key_id, key_mod, key_btn );
+#endif /* DEBUG */
+
+   osio_win_key( &key_id, key_mod, &key_btn );
+
+#ifdef DEBUG
+   /* Append what's changed after transformation function. */
+   sprintf( &(buffer[strlen( buffer )]), /* Use sprintf for VC 1.5. */
+      "tlv: 0x%04x tls: 0x%04x",
+      key_id, key_btn );
    SetWindowText( g_key_label_h, buffer );
 #endif /* DEBUG */
 
-   keybd_event( LOWORD( key_id_vk ), HIWORD( key_id_vk ), 0, 0 );
+   keybd_event( key_id, key_btn, 0, 0 );
 }
 
 void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
-   uint32_t key_id_vk = 0;
-   key_id_vk = osio_win_key( key_id, key_mod, key_btn );
-   keybd_event( LOWORD( key_id_vk ), HIWORD( key_id_vk ), KEYEVENTF_KEYUP, 0 );
+   osio_win_key( &key_id, key_mod, &key_btn );
+   keybd_event( key_id, key_btn, KEYEVENTF_KEYUP, 0 );
 }
 
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
@@ -731,6 +777,26 @@ void osio_logging_cleanup() {
       fclose( g_dbg );
    }
 }
+
+#define _osio_win_undoc_proc_ld( proc_name, module ) \
+   g_ ## proc_name ## _proc = GetProcAddress( user_h, #proc_name ); \
+   if( NULL == g_ ## proc_name ## _proc ) { \
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR, \
+         "could not find " #proc_name " proc!\n" ); \
+      retval = MINHOP_ERR_OS; \
+      goto cleanup; \
+   }
+
+#ifdef DEBUG
+/* In debug mode, also write handle to the log! */
+#  define osio_win_undoc_proc( proc_name, module ) \
+      _osio_win_undoc_proc_ld( proc_name, module ) \
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, \
+      "found " #proc_name " at: 0x%08lx\n", g_ ## proc_name ## _proc );
+#else
+#  define osio_win_undoc_proc( proc_name, module ) \
+      _osio_win_undoc_proc_ld( proc_name, module )
+#endif /* DEBUG */
 
 #ifdef MINPUT_OS_WIN32
 int WINAPI WinMain(
@@ -764,40 +830,10 @@ int PASCAL WinMain(
       "found USER.EXE at: 0x%04x\n", user_h );
 #endif /* DEBUG */
 
-   g_mouse_event_proc = GetProcAddress( user_h, "mouse_event" ); /* 507a */
-   if( NULL == g_mouse_event_proc ) {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not find mouse_event proc!\n" );
-      retval = MINHOP_ERR_OS;
-      goto cleanup;
-   }
-#ifdef DEBUG
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "found mouse_event at: 0x%08lx\n", g_mouse_event_proc );
-#endif /* DEBUG */
-
-   g_keybd_event_proc = GetProcAddress( user_h, "keybd_event" ); /* 4b59 */
-   if( NULL == g_keybd_event_proc ) {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not find keybd_event proc!\n" );
-      retval = MINHOP_ERR_OS;
-      goto cleanup;
-   }
-#ifdef DEBUG
-   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "found keybd_event at: 0x%08lx\n", g_keybd_event_proc );
-#endif /* DEBUG */
+   osio_win_undoc_proc( mouse_event, user_h ); /* 507a in WFWG311 */
+   osio_win_undoc_proc( keybd_event, user_h ); /* 4b59 in WFWG311 */
 
 #endif /* MINPUT_OS_WIN16 */
-
-   /* Setup packet buffer. */
-   g_pkt_buf = calloc( SOCKBUF_SZ + 1, 1 );
-   if( NULL == g_pkt_buf ) {
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not allocate packet buffer!\n" );
-      retval = MINHOP_ERR_ALLOC;
-      goto cleanup;
-   }
 
 #ifdef MINPUT_NO_ARGS
    /* Hardcode network config. */
@@ -812,15 +848,13 @@ int PASCAL WinMain(
 
    retval = minput_main( &g_config );
 
+#ifdef MINPUT_OS_WIN16
 cleanup:
+#endif /* MINPUT_OS_WIN16 */
 
    if( retval ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "quitting: %d\n", retval );
-   }
-
-   if( NULL != g_pkt_buf ) {
-      free( g_pkt_buf );
    }
 
    return retval;
