@@ -4,18 +4,18 @@
 SOURCES := src/main.c src/synproto.c src/netio.c
 OBJECTS := $(subst .c,.o,$(SOURCES))
 
-CFLAGS_WATCOM_W32 := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw
+CFLAGS_WATCOM_W32 := -bt=nt -i=$(WATCOM)/h/nt -DMINPUT_OS_WIN32 -hw $(DEFINES)
 RES_PATH_W32 := obj/win32/src/minhop.res
 
-CFLAGS_WATCOM_W16 := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16
+CFLAGS_WATCOM_W16 := -bt=windows -2 -ms -i=$(WATCOM)/h/win -hw -ecc -DMINPUT_OS_WIN16 $(DEFINES)
 RES_PATH_W16 := obj/win16/src/minhop.res
 
-minhop: CFLAGS_GCC :=
+CFLAGS_GCC := $(DEFINES)
 
 ifneq ("$(BUILD)", "RELEASE")
-	CFLAGS_WATCOM_W32 += -we -DDEBUG -d3 -db -hc -DDEBUG_PROTO_CLIP
-	CFLAGS_WATCOM_W16 += -we -DDEBUG -d3 -db -hc -DDEBUG_PROTO_CLIP
-	CFLAGS_GCC += -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall
+	CFLAGS_WATCOM_W32 += -we -DDEBUG -d3 -db -hc
+	CFLAGS_WATCOM_W16 += -we -DDEBUG -d3 -db -hc
+	CFLAGS_GCC += -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall -DDEBUG_PROTO_CLIP
 	LDFLAGS_WATCOM_W16 += debug codeview
 	LDFLAGS_WATCOM_W32 += debug codeview
 endif

@@ -116,8 +116,10 @@ int netio_process_packets( struct NETIO_CFG* config ) {
       goto cleanup;
    }
 
+#ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "recv sz: %lu", recv_sz );
+#endif /* DEBUG_PACKETS_IN */
 
    /* Dump the received data into the packet buffer. */
    if( config->pkt_buf_sz + recv_sz >= SOCKBUF_SZ ) {
@@ -141,11 +143,12 @@ int netio_process_packets( struct NETIO_CFG* config ) {
    /* Append the received data to the packet buffer. */
    memcpy( &(config->pkt_buf[config->pkt_buf_sz]), sockbuf, recv_sz );
    config->pkt_buf_sz += recv_sz;
+
+#ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "copied packet(s) to pkt buffer; new pkt buffer sz: %lu",
       config->pkt_buf_sz );
 
-#ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, "new pkt buffer: " );
    for( j = 0 ; recv_sz > j ; j++ ) {
       osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG,
@@ -157,9 +160,12 @@ int netio_process_packets( struct NETIO_CFG* config ) {
    do {
       /* How big does the packet claim to be? */
       pkt_claim_sz = swap_32( *((uint32_t*)(config->pkt_buf)) ) + 4;
+
+#ifdef DEBUG_PACKETS_IN
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "recv announced size: %lu (0x%08lx)",
          pkt_claim_sz, pkt_claim_sz );
+#endif /* DEBUG_PACKETS_IN */
 
       if( config->pkt_buf_sz < pkt_claim_sz ) {
          /* The packet is too small! Let's try again to fetch the rest! */
@@ -172,9 +178,11 @@ int netio_process_packets( struct NETIO_CFG* config ) {
 
       /* Remove the packet size from the packet buffer size. */
       config->pkt_buf_sz -= pkt_claim_sz;
+#ifdef DEBUG_PACKETS_IN
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "removed packet; new pkt buffer sz: %lu",
          config->pkt_buf_sz );
+#endif /* DEBUG_PACKETS_IN */
 
       /* Move the remaining contents of packet buffer down to the start. */
       for( j = 0 ; config->pkt_buf_sz > j ; j++ ) {

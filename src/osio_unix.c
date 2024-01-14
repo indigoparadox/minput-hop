@@ -33,8 +33,6 @@ void osio_ui_cleanup() {
 
 int osio_loop( struct NETIO_CFG* config ) {
    int retval = 0;
-   char pkt_buf[SOCKBUF_SZ + 1];
-   uint32_t pkt_buf_sz = 0;
 
    /* Run each the loop iterator directly. */
    do {
@@ -44,7 +42,9 @@ int osio_loop( struct NETIO_CFG* config ) {
    return retval;
 }
 
-void osio_printf( const char* file, int line, int status, const char* fmt, ... ) {
+void osio_printf(
+   const char* file, int line, int status, const char* fmt, ...
+) {
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
    char prefix[OSIO_PRINTF_PREFIX_SZ + 1];
@@ -60,6 +60,7 @@ void osio_printf( const char* file, int line, int status, const char* fmt, ... )
       memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
       snprintf( prefix, OSIO_PRINTF_PREFIX_SZ,
          "(%d) %s: %d: ", status, file, line );
+      fflush( stdout );
 
       printf( "\n%s: %s", prefix, buffer );
 #ifdef DEBUG
@@ -71,6 +72,7 @@ void osio_printf( const char* file, int line, int status, const char* fmt, ... )
 #endif /* DEBUG */
    } else {
       printf( "%s", buffer );
+      fflush( stdout );
 #ifdef DEBUG
       if( NULL != g_dbg ) {
          fprintf( g_dbg, "%s", buffer );
@@ -114,6 +116,23 @@ void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
+}
+
+void osio_set_clipboard( const char* buffer, size_t buffer_sz ) {
+   char* buffer_pr = NULL;
+
+   buffer_pr = calloc( 1, buffer_sz + 1 );
+   if( NULL == buffer_pr ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not allocate print buffer!" );
+      return;
+   }
+
+   strncpy( buffer_pr, buffer, buffer_sz );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "clipboard in: %s", buffer_pr );
+
+   free( buffer_pr );
 }
 
 void osio_logging_setup() {

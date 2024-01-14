@@ -5,10 +5,12 @@ void synproto_dump( const char* buf, size_t buf_sz ) {
    size_t i = 0;
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "%ld bytes", buf_sz );
+      "%ld bytes: ", buf_sz );
    for( i = 0 ; buf_sz > i ; i++ ) {
       osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG,
-         "0x%02x (%c) ", buf[i], buf[i] );
+         "0x%02x (%c) ",
+         buf[i] > 32 /* Is printable? */ ? buf[i] : ' ',
+         buf[i] );
    }
 }
 
@@ -162,7 +164,11 @@ int synproto_parse_and_reply(
       key_id = 0,
       key_mod = 0,
       key_btn = 0;
+   int32_t clp_seq = 0;
+   int8_t clp_id = 0,
+      clp_mark = 0;
    int retval = 0;
+   size_t i = 0;
 
    /* It's not ideal for separation of concerns that we send the replies
     * directly from the switch, below. But the alternatives are more complex
@@ -173,14 +179,14 @@ int synproto_parse_and_reply(
     * at: src/lib/barrier/protocol_types.cpp
     */
 
-#ifdef DEBUG
+#ifdef DEBUG_PACKETS_IN
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "------" );
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "pkt type: %c%c%c%c (0x%08x)",
       pkt_buf[4], pkt_buf[5], pkt_buf[6], pkt_buf[7],
       swap_32( *pkt_type_p ) );
-#endif /* DEBUG */
+#endif /* DEBUG_PACKETS_IN */
 
    switch( swap_32( *pkt_type_p ) ) {
 
@@ -243,7 +249,32 @@ int synproto_parse_and_reply(
 
    case 0x44434c50: /* DCLP */
       /* TODO: Transfer clipboard data. */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "clip in!" );
+      #define DCLP_BUF_START 29
+      clp_id = synproto_exval_8( pkt_buf, 8 );
+      clp_seq = synproto_exval_16( pkt_buf, 9 );
+      clp_mark = synproto_exval_8( pkt_buf, 13 );
+
+      if( 0 != clp_id ) {
+         /* Ignore all non-0 clip IDs (not from server?) */
+         break;
+      }
+
+#ifdef DEBUG_PROTO_CLIP
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+         "DCLP: id: %02x, seq: %08lx, mark: %02x, sz: %lu bytes: ",
+         clp_id, clp_seq, clp_mark, pkt_buf_sz );
+      if( 2 == clp_mark ) {
+         for( i = DCLP_BUF_START ; pkt_buf_sz > i ; i++ ) {
+            osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG,
+               "%c (%02x) ",
+               pkt_buf[i] > 32 /* Is printable? */ ? pkt_buf[i] : ' ',
+               pkt_buf[i] );
+         }
+      }
+#endif /* DEBUG_PROTO_CLIP */
+
+      osio_set_clipboard(
+         &(pkt_buf[DCLP_BUF_START]), pkt_buf_sz - DCLP_BUF_START );
       break;
 
    case 0x444d4d56: /* DMMV */
@@ -295,6 +326,10 @@ int synproto_parse_and_reply(
 
    case 0x434f5554: /* COUT */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "out!" );
+      break;
+
+   case 0x44534f50:
+      /* TODO: Handle options. */
       break;
 
    case 0x45424144: /* "EBAD" */

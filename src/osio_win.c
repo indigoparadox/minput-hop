@@ -739,6 +739,10 @@ void osio_key_up( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
+void osio_set_clipboard( const char* buffer, size_t buffer_sz ) {
+
+}
+
 void osio_logging_setup() {
 #ifdef DEBUG
    g_dbg = fopen( "dbg.txt", "w" );

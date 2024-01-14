@@ -31,7 +31,9 @@ In addition to the DEBUG compile-time definition, some fine-grained debug statem
  - DEBUG\_FLOW
  - DEBUG\_CALV
  - DEBUG\_SEND
+ - DEBUG\_PACKETS\_IN
  - DEBUG\_PROTO\_MOUSE
+ - DEBUG\_PROTO\_CLIP
 
 ## References
 
