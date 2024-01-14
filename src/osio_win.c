@@ -3,6 +3,8 @@
 
 #include "minhopr.h"
 
+#include "oldc.h"
+
 #ifdef MINPUT_OS_WIN16
 
 /* These are setup in WinMain below, if needed. */
@@ -99,7 +101,7 @@ static FILE* g_dbg = NULL;
 static void osio_win_quit( HWND window_h, int retval ) {
    
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "quit command received from UI...\n" );
+      "quit command received from UI..." );
 
    /* Don't try to reconnect! */
    KillTimer( window_h, ID_TIMER_LOOP );
@@ -153,19 +155,19 @@ static void osio_win_save_fields(
    retval = GetWindowText( client_name_h, buffer, SERVER_ADDR_SZ_MAX );
    strncpy( g_config.client_name, buffer, SERVER_ADDR_SZ_MAX );
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "set client name to: %s\n", g_config.client_name );
+      "set client name to: %s", g_config.client_name );
 
    memset( buffer, '\0', SERVER_ADDR_SZ_MAX + 1 );
    retval = GetWindowText( server_addr_h, buffer, SERVER_ADDR_SZ_MAX );
    strncpy( g_config.server_addr, buffer, SERVER_ADDR_SZ_MAX );
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "set server address to: %s\n", g_config.server_addr );
+      "set server address to: %s", g_config.server_addr );
 
    memset( buffer, '\0', SERVER_ADDR_SZ_MAX + 1 );
    retval = GetWindowText( server_port_h, buffer, SERVER_ADDR_SZ_MAX );
    g_config.server_port = atoi( buffer );
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "set server port to: %u\n", g_config.server_port );
+      "set server port to: %u", g_config.server_port );
 
    netio_connect( &g_config );
 }
@@ -375,7 +377,7 @@ int osio_ui_setup() {
 
    if( !RegisterClass( &wc ) ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not register window class!\n" );
+         "could not register window class!" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
@@ -398,7 +400,7 @@ int osio_ui_setup() {
 
    if( !g_window ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not create window!\n" );
+         "could not create window!" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
@@ -407,7 +409,7 @@ int osio_ui_setup() {
 
    if( !SetTimer( g_window, ID_TIMER_LOOP, 100, NULL ) ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not set timer!\n" );
+         "could not set timer!" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
@@ -452,7 +454,7 @@ int osio_loop( struct NETIO_CFG* config ) {
    do {
 #ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "processing windows message queue...\n" );
+      "processing windows message queue..." );
 #endif /* DEBUG_FLOW */
       retval = GetMessage( &msg, NULL, 0, 0 );
       TranslateMessage( &msg );
@@ -461,7 +463,7 @@ int osio_loop( struct NETIO_CFG* config ) {
       if( WM_QUIT == msg.message ) {
          if( g_running ) {
             osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-               "found quit message while still running!\n" );
+               "found quit message while still running!" );
          }
          retval = msg.wParam;
          g_running = 0;
@@ -469,23 +471,10 @@ int osio_loop( struct NETIO_CFG* config ) {
    } while( g_running && 0 < retval );
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
-      "leaving message loop...\n" );
+      "leaving message loop..." );
 
    return retval;
 }
-
-#ifdef MINPUT_NO_PRINTF
-union FMT_SPEC {
-   long d;
-   unsigned long u;
-   char c;
-   void* p;
-   char* s;
-};
-
-#define SPEC_FMT_LONG 1
-#define SPEC_FMT_UNSIGNED 2
-#endif /* MINPUT_NO_PRINTF */
 
 void osio_printf(
    const char* file, int line, int status, const char* fmt, ...
@@ -493,145 +482,19 @@ void osio_printf(
    va_list args;
    char buffer[OSIO_PRINTF_BUFFER_SZ + 1];
    char prefix[OSIO_PRINTF_PREFIX_SZ + 1];
-   static char last_char = '\n';
 
-#ifndef MINPUT_NO_PRINTF
    memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
    memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
 
-   if( '\n' == last_char ) {
+   if( NULL != file ) {
       /* Only produce a prefix on a new line. */
-      snprintf( prefix, OSIO_PRINTF_PREFIX_SZ,
-         "(%d) %s: %d: ", status, file, line );
+      /* Using sprintf for ancient C versions. */
+      sprintf( prefix, "(%d) %s: %d: ", status, file, line );
    }
 
    va_start( args, fmt );
    vsnprintf( buffer, OSIO_PRINTF_BUFFER_SZ, fmt, args );
    va_end( args );
-
-   assert( 0 < strlen( buffer ) );
-   last_char = buffer[strlen( buffer ) - 1];
-#else
-   size_t i = 0,
-      i_out = 0;
-   char last = '\0';
-   int spec_fmt = 0;
-   union FMT_SPEC spec;
-   char itoa_buf[OSIO_NUM_BUFFER_SZ + 1];
-   char c;
-
-   va_start( args, fmt );
-
-   memset( prefix, '\0', OSIO_PRINTF_PREFIX_SZ + 1 );
-   memset( buffer, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
-   memset( itoa_buf, '\0', OSIO_NUM_BUFFER_SZ + 1 );
-
-   if( '\n' == last_char ) {
-      /* Only produce a prefix on a new line. */
-      snprintf( prefix, OSIO_PRINTF_PREFIX_SZ,
-         "(%d) %s: %d: ", status, file, line );
-   }
-
-   /* Roughly adapted from uprintf for Visual C++ */
-
-   for( i = 0 ; '\0' != fmt[i] ; i++ ) {
-      c = fmt[i]; /* Separate so we can play tricks below. */
-
-      if( i_out >= OSIO_PRINTF_BUFFER_SZ ) {
-         break;
-      }
- 
-      if( '%' == last ) {
-         /* Conversion specifier encountered. */
-         switch( fmt[i] ) {
-            case 'l':
-               spec_fmt |= SPEC_FMT_LONG;
-               /* Skip resetting the last char. */
-               continue;
-
-            case 's':
-               spec.s = va_arg( args, char* );
-
-               /* Print string. */
-               i_out += strlen( spec.s );
-               strcat( buffer, spec.s );
-               break;
-
-            case 'u':
-               spec_fmt |= SPEC_FMT_UNSIGNED;
-            case 'd':
-               if( SPEC_FMT_LONG == (SPEC_FMT_LONG & spec_fmt) ) {
-                  if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
-                     spec.u = va_arg( args, unsigned long );
-                  } else {
-                     spec.d = va_arg( args, long );
-                  }
-               } else {
-                  if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
-                     spec.u = va_arg( args, unsigned );
-                  } else {
-                     spec.d = va_arg( args, int );
-                  }
-               }
-               
-               if( SPEC_FMT_UNSIGNED == (SPEC_FMT_UNSIGNED & spec_fmt) ) {
-                  _ultoa( spec.u, itoa_buf, 10 );
-               } else {
-                  _ltoa( spec.d, itoa_buf, 10 );
-               }
-               i_out += strlen( itoa_buf );
-               strcat( buffer, itoa_buf );
-               break;
-
-            case 'x':
-               if( SPEC_FMT_LONG == (SPEC_FMT_LONG & spec_fmt) ) {
-                  spec.u = va_arg( args, unsigned long );
-               } else {
-                  spec.u = va_arg( args, unsigned int );
-               }
-
-               /* TODO */
-
-               _ultoa( spec.u, itoa_buf, 16 );
-               i_out += strlen( itoa_buf );
-               strcat( buffer, itoa_buf );
-               break;
-
-            case 'c':
-               spec.c = va_arg( args, int );
-
-               buffer[i_out++] = spec.c;
-               break;
-
-            case '%':
-               /* Literal % */
-               last = '\0';
-               buffer[i_out++] = '%';
-               break;
-
-            case '0':
-            case '1':
-            case '2':
-            case '3':
-            case '4':
-            case '5':
-            case '6':
-            case '7':
-            case '8':
-            case '9':
-               c = '%';
-               break;
-         }
-      } else if( '%' != c ) {
-         spec_fmt = 0;
-         buffer[i_out++] = c;
-         memset( itoa_buf, '\0', OSIO_PRINTF_BUFFER_SZ + 1 );
-      }
-      last = c;
-   }
-
-   va_end( args );
-#endif /* !MINPUT_NO_PRINTF */
 
    if( MINPUT_STAT_ERROR == status ) {
       MessageBox( g_window, buffer, "MInput Hop", MB_ICONSTOP );
@@ -644,7 +507,12 @@ void osio_printf(
    /* Append buffer to the log file. */
 
    if( NULL != g_dbg ) {
-      fprintf( g_dbg, "%s: %s", prefix, buffer );
+      if( NULL != file ) {
+         /* Print the prefix if available. */
+         fprintf( g_dbg, "\n%s: %s", prefix, buffer );
+      } else {
+         fprintf( g_dbg, "%s", buffer );
+      }
       fflush( g_dbg );
    }
 
@@ -890,7 +758,7 @@ void osio_logging_cleanup() {
    g_ ## proc_name ## _proc = GetProcAddress( user_h, #proc_name ); \
    if( NULL == g_ ## proc_name ## _proc ) { \
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR, \
-         "could not find " #proc_name " proc!\n" ); \
+         "could not find " #proc_name " proc!" ); \
       retval = MINHOP_ERR_OS; \
       goto cleanup; \
    }
@@ -900,7 +768,7 @@ void osio_logging_cleanup() {
 #  define osio_win_undoc_proc( proc_name, module ) \
       _osio_win_undoc_proc_ld( proc_name, module ) \
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, \
-      "found " #proc_name " at: 0x%08lx\n", g_ ## proc_name ## _proc );
+      "found " #proc_name " at: 0x%08lx", g_ ## proc_name ## _proc );
 #else
 #  define osio_win_undoc_proc( proc_name, module ) \
       _osio_win_undoc_proc_ld( proc_name, module )
@@ -929,13 +797,13 @@ int PASCAL WinMain(
    user_h = GetModuleHandle( "USER" );
    if( NULL == user_h ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not find USER module!\n" );
+         "could not find USER module!" );
       retval = MINHOP_ERR_OS;
       goto cleanup;
    }
 #ifdef DEBUG
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "found USER.EXE at: 0x%04x\n", user_h );
+      "found USER.EXE at: 0x%04x", user_h );
 #endif /* DEBUG */
 
    osio_win_undoc_proc( mouse_event, user_h ); /* 507a in WFWG311 */
@@ -962,7 +830,7 @@ cleanup:
 
    if( retval ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "quitting: %d\n", retval );
+         "quitting: %d", retval );
    }
 
    return retval;

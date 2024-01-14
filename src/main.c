@@ -8,7 +8,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
 
 #ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "beginning iteration...\n" );
+      "beginning iteration..." );
 #endif /* DEBUG_FLOW */
 
    /* Ensure we are connected; reconnect if not. */
@@ -21,7 +21,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
 
 #ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "processing packets...\n" );
+      "processing packets..." );
 #endif /* DEBUG_FLOW */
 
    /* Process packets and handle protocol/input events. */
@@ -31,20 +31,20 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       retval = 0;
 #ifdef DEBUG_FLOW
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "no data received!\n" );
+         "no data received!" );
 #endif /* DEBUG_FLOW */
    
    } else if( MINHOP_ERR_PROTOCOL == retval ) {
       /* Protocol error also isn't a show-stopper. */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "protocol error!\n" );
+         "protocol error!" );
       retval = 0;
 
    }
 
 #ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "checking keepalives...\n" );
+      "checking keepalives..." );
 #endif /* DEBUG_FLOW */
 
    /* Check how we're doing for keepalives. */
@@ -54,7 +54,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       /* Note: This is not STAT_ERROR because that might produce too many
        * dialogs, overwhelming Win16! */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
-         "timed out (%u past %u), restarting!\n",
+         "timed out (%u past %u), restarting!",
          time_now, config->calv_deadline );
       if( 0 != config->socket_fd ) {
          netio_disconnect( config );
@@ -63,7 +63,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
 
 #ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "(%lu) successfully finished iteration!\n", time_now );
+      "(%lu) successfully finished iteration!", time_now );
 #endif /* DEBUG_FLOW */
 
 cleanup:
@@ -83,7 +83,7 @@ int minput_main( struct NETIO_CFG* config ) {
 
    /*
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-      "%s | %s | %d\n",
+      "%s | %s | %d",
       config->client_name, config->server_addr, config->server_port );
    */
 
@@ -96,26 +96,26 @@ int minput_main( struct NETIO_CFG* config ) {
        * setup!
        */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "usage: minhop <name> <server> [port]\n" );
+         "usage: minhop <name> <server> [port]" );
       retval = MINHOP_ERR_ARGS;
       goto cleanup;
    }
 
    config->pkt_buf_sz_max = SOCKBUF_SZ;
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "setting up packet buffer with initial size of %lu...\n",
+      "setting up packet buffer with initial size of %lu...",
       config->pkt_buf_sz_max );
    config->pkt_buf_sz = 0;
    config->pkt_buf = calloc( config->pkt_buf_sz_max, 1 );
    if( NULL == config->pkt_buf ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
-         "could not allocate packet buffer!\n" );
+         "could not allocate packet buffer!" );
       retval = MINHOP_ERR_ALLOC;
       goto cleanup;
    }
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "starting up UI...\n" );
+      "starting up UI..." );
 
    retval = osio_ui_setup();
    if( 0 != retval ) {
@@ -123,7 +123,7 @@ int minput_main( struct NETIO_CFG* config ) {
    }
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "starting up network...\n" );
+      "starting up network..." );
    
    retval = netio_setup( config );
    if( 0 != retval ) {
@@ -131,7 +131,7 @@ int minput_main( struct NETIO_CFG* config ) {
    }
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "starting main loop...\n" );
+      "starting main loop..." );
 
    retval = osio_loop( config );
 
@@ -147,9 +147,11 @@ cleanup:
 
    if( NULL != config->pkt_buf ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "freeing packet buffer...\n" );
+         "freeing packet buffer..." );
       free( config->pkt_buf );
    }
+
+   osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG, "\n" );
 
    osio_logging_cleanup();
 
