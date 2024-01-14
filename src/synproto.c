@@ -249,7 +249,7 @@ int synproto_parse_and_reply(
 
    case 0x44434c50: /* DCLP */
       /* TODO: Transfer clipboard data. */
-      #define DCLP_BUF_START 29
+      #define DCLP_BUF_START 30
       clp_id = synproto_exval_8( pkt_buf, 8 );
       clp_seq = synproto_exval_16( pkt_buf, 9 );
       clp_mark = synproto_exval_8( pkt_buf, 13 );

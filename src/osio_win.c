@@ -778,6 +778,7 @@ void osio_set_clipboard( const char* buffer, size_t buffer_sz ) {
    assert( NULL != clip_mem_ptr );
 #endif /* DEBUG */
    _fmemcpy( clip_mem_ptr, buffer, buffer_sz );
+   clip_mem_ptr[buffer_sz] = '\0';
    GlobalUnlock( clip_mem_h );
 
    /* Pass global allocation to the clipboard. */
