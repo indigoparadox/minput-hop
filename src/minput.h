@@ -31,9 +31,6 @@
 /* \} */ /* minput_constants */
 
 #if defined( MINPUT_OS_WIN16 )
-#if 0
-#  include <assert.h>
-#endif
 #  include <winsock.h>
 #  include <windows.h>
 #  include <mmsystem.h>
@@ -47,7 +44,9 @@
 #  include <windows.h>
 #  include <mmsystem.h>
 #  include <shellapi.h>
-#  include <assert.h>
+#  ifdef DEBUG
+#     include <assert.h>
+#  endif /* DEBUG */
 #  include <stdio.h> /* FILE */
 #  include <string.h> /* strlen, memset */
 #  include <stdlib.h> /* atoi */
@@ -64,7 +63,9 @@
 #  include <string.h>
 #  include <stdlib.h>
 #  include <sys/time.h>
-#  include <assert.h>
+#  ifdef DEBUG
+#     include <assert.h>
+#  endif /* DEBUG */
 #  include <unistd.h>
 #endif
 
@@ -95,12 +96,6 @@ int minput_loop_iter( struct NETIO_CFG* config );
 #include "netio.h"
 #include "osio.h"
 #include "synproto.h"
-
-#ifdef MINPUT_MAIN_C
-FILE* g_dbg = NULL;
-#else
-extern FILE* g_dbg;
-#endif /* MINPUT_MAIN_C */
 
 #endif /* !MINPUT_H */
 

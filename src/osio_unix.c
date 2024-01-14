@@ -1,6 +1,10 @@
 
 #include "osio.h"
 
+#ifdef DEBUG
+static FILE* g_dbg = NULL;
+#endif /* DEBUG */
+
 void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
    /* Very simple arg parser. */
 
@@ -52,7 +56,9 @@ void osio_printf( const char* file, int line, int status, const char* fmt, ... )
 
    printf( "%s", buffer );
 
+#ifdef DEBUG
    fprintf( g_dbg, "%s", buffer );
+#endif /* DEBUG */
 }
 
 uint32_t osio_get_time() {
@@ -92,14 +98,18 @@ void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
 void osio_logging_setup() {
+#ifdef DEBUG
    g_dbg = fopen( "dbg.txt", "w" );
    assert( NULL != g_dbg );
+#endif /* DEBUG */
 }
 
 void osio_logging_cleanup() {
+#ifdef DEBUG
    if( NULL != g_dbg && stdout != g_dbg ) {
       fclose( g_dbg );
    }
+#endif /* DEBUG */
 }
 
 int main( int argc, char* argv[] ) {

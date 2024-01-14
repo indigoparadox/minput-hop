@@ -73,9 +73,11 @@ cleanup:
 int minput_main( struct NETIO_CFG* config ) {
    int retval = 0;
 
+#ifdef DEBUG
    assert( 4 == sizeof( uint32_t ) );
    assert( 2 == sizeof( uint16_t ) );
    assert( 1 == sizeof( uint8_t ) );
+#endif /* DEBUG */
 
    osio_logging_setup();
 
