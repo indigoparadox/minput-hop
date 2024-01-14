@@ -127,22 +127,22 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... ) {
    out_pos = synproto_vprintf( &(out_buf[4]), SOCKBUF_SZ - 4, fmt, args );
    va_end( args );
 
-#ifdef DEBUG
+#ifdef DEBUG_SEND
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "sending packet:\n" );
    synproto_dump( out_buf, out_pos + 4 );
-#endif /* DEBUG */
+#endif /* DEBUG_SEND */
 
    if( force_sz ) {  
-#ifdef DEBUG
+#ifdef DEBUG_SEND
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
-#endif /* DEBUG */
+#endif /* DEBUG_SEND */
       *buf_sz_p = swap_32( (uint32_t)4 );
    } else {
-#ifdef DEBUG
+#ifdef DEBUG_SEND
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "buf_sz_p (%p): %u\n", buf_sz_p, out_pos );
-#endif /* DEBUG */
+#endif /* DEBUG_SEND */
       *buf_sz_p = swap_32( out_pos );
    }
 
@@ -231,8 +231,10 @@ int synproto_parse_and_reply(
       break;
 
    case 0x43414c56: /* "CALV" */
+#ifdef DEBUG_CALV
       /* Keepalive received, so respond! */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "Ping... Pong!\n" );
+#endif /* DEBUG_CALV */
       synproto_send( config->socket_fd, 4, "CALV%4iCNOP", 4 );
       config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
       break;

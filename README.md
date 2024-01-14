@@ -24,6 +24,14 @@ This might be simplified somewhat later, but it works for now.
  - Abstract socket send/recv/etc into layer that can be switched out for e.g.
    serial communication over RS-232.
 
+## Debug Defines
+
+In addition to the DEBUG compile-time definition, some fine-grained debug statements have been placed inside the following definitions to keep verbosity in the logs down when not needed:
+
+ - DEBUG\_FLOW
+ - DEBUG\_CALV
+ - DEBUG\_SEND
+
 ## References
 
 - Programming Windows, 3rd Edition - Petzold, Charles

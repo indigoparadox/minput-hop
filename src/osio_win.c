@@ -442,22 +442,20 @@ int osio_loop( struct NETIO_CFG* config ) {
    MSG msg;
 
    do {
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "processing windows message queue...\n" );
-#endif
+#endif /* DEBUG_FLOW */
       retval = GetMessage( &msg, NULL, 0, 0 );
       TranslateMessage( &msg );
       DispatchMessage( &msg );
 
       if( WM_QUIT == msg.message ) {
-#ifdef DEBUG
          if( g_running ) {
             osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
                "found quit message while still running!\n" );
          }
          retval = msg.wParam;
-#endif
          g_running = 0;
       }
    } while( g_running && 0 < retval );
@@ -633,7 +631,16 @@ void osio_printf(
       SetWindowText( g_status_label_h, buffer );
    }
 
-   fprintf( g_dbg, "%s: %s", prefix, buffer );
+#ifdef DEBUG
+
+   /* Append buffer to the log file. */
+
+   if( NULL != g_dbg ) {
+      fprintf( g_dbg, "%s: %s", prefix, buffer );
+      fflush( g_dbg );
+   }
+
+#endif /* DEBUG */
 }
 
 uint32_t osio_get_time() {

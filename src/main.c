@@ -6,10 +6,10 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
    int retval = 0;
    uint32_t time_now = 0;
 
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "beginning iteration...\n" );
-#endif /* DEBUG */
+#endif /* DEBUG_FLOW */
 
    /* Ensure we are connected; reconnect if not. */
    if( 0 == config->socket_fd ) {
@@ -19,35 +19,33 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       }
    }
 
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "processing packets...\n" );
-#endif /* DEBUG */
+#endif /* DEBUG_FLOW */
 
    /* Process packets and handle protocol/input events. */
    retval = netio_process_packets( config );
    if( MINHOP_ERR_RECV == retval ) {
       /* Not a show-stopper, but try to reconnect! */
       retval = 0;
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "no data received!\n" );
-#endif /* DEBUG */
+#endif /* DEBUG_FLOW */
    
    } else if( MINHOP_ERR_PROTOCOL == retval ) {
       /* Protocol error also isn't a show-stopper. */
-#ifdef DEBUG
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "protocol error!\n" );
-#endif /* DEBUG */
       retval = 0;
 
    }
 
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "checking keepalives...\n" );
-#endif /* DEBUG */
+#endif /* DEBUG_FLOW */
 
    /* Check how we're doing for keepalives. */
    time_now = osio_get_time();
@@ -63,10 +61,10 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       }
    }
 
-#ifdef DEBUG
+#ifdef DEBUG_FLOW
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "(%lu) successfully finished iteration!\n", time_now );
-#endif /* DEBUG */
+#endif /* DEBUG_FLOW */
 
 cleanup:
    return retval;
