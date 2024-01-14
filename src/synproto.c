@@ -276,7 +276,12 @@ int synproto_parse_and_reply(
       }
 #endif /* DEBUG_PROTO_CLIP */
 
-      assert( DCLP_BUF_START < pkt_buf_sz );
+      if( DCLP_BUF_START > pkt_buf_sz ) {
+         osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+            "clipboard buffer starts after packet ends!" );
+         retval = MINHOP_ERR_PROTOCOL;
+         break;
+      }
 
       osio_set_clipboard(
          &(pkt_buf[DCLP_BUF_START]), pkt_buf_sz - DCLP_BUF_START );
