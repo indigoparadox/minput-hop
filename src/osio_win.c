@@ -98,10 +98,10 @@ static NOTIFYICONDATA g_notify_icon_data;
 #endif /* MINPUT_OS_WIN32 */
 static FILE* g_dbg = NULL;
 
-static void osio_win_quit( HWND window_h, int retval ) {
+static void osio_win_quit( HWND window_h, int retval, int from_ui ) {
    
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-      "quit command received from UI..." );
+      "quit command received%s", from_ui ? " from UI..." : "" );
 
    /* Don't try to reconnect! */
    KillTimer( window_h, ID_TIMER_LOOP );
@@ -176,7 +176,7 @@ static void osio_win_save_fields(
    if( NULL == ctl_h ) { \
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR, \
          "could not allocate: " #ctl_h ); \
-      osio_win_quit( window_h, MINHOP_ERR_OS ); \
+      osio_win_quit( window_h, MINHOP_ERR_OS, 0 ); \
       goto cleanup; \
    }
 
@@ -251,7 +251,7 @@ LRESULT CALLBACK WndProc(
       if( ID_TIMER_LOOP == wParam ) {
          retval = minput_loop_iter( &g_config );
          if( retval ) {
-            osio_win_quit( window_h, retval );
+            osio_win_quit( window_h, retval, 0 );
          }
       }
       break;
@@ -284,7 +284,7 @@ LRESULT CALLBACK WndProc(
             NULL
          );
          if( ID_TRAY_CONTEXT_EXIT == popup_menu_clicked ) {
-            osio_win_quit( window_h, 0 );
+            osio_win_quit( window_h, 0, 1 );
          }
          break;
       }
@@ -294,7 +294,7 @@ LRESULT CALLBACK WndProc(
    case WM_COMMAND:
       switch( wParam ) {
       case ID_WIN_MENU_FILE_EXIT:
-         osio_win_quit( window_h, 0 );
+         osio_win_quit( window_h, 0, 1 );
          break;
 
       case ID_WIN_SAVE:
@@ -309,7 +309,7 @@ LRESULT CALLBACK WndProc(
       ShowWindow( window_h, SW_HIDE );
 #else
       /* Quit program on main window close. */
-      osio_win_quit( window_h, 0 );
+      osio_win_quit( window_h, 0, 1 );
 #endif /* MINPUT_OS_WIN32 */
       break;
 

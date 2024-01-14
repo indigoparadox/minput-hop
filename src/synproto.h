@@ -93,5 +93,7 @@ uint32_t synproto_send( int sockfd, uint8_t force_sz, const char* fmt, ... );
 int synproto_parse_and_reply(
    struct NETIO_CFG* config, const char* pkt_buf, uint32_t pkt_buf_sz );
 
+void synproto_reset_calv_deadline( struct NETIO_CFG* config );
+
 #endif /* SYNPROTO_H */
 

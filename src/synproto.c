@@ -204,7 +204,7 @@ int synproto_parse_and_reply(
          config->socket_fd, 0, "Barrier%2i%2i%4i%s",
          ver_maj, ver_min, 7, config->client_name );
 
-      config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
+      synproto_reset_calv_deadline( config );
       
       break;
 
@@ -240,7 +240,7 @@ int synproto_parse_and_reply(
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "Ping... Pong!" );
 #endif /* DEBUG_CALV */
       synproto_send( config->socket_fd, 4, "CALV%4iCNOP", 4 );
-      config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
+      synproto_reset_calv_deadline( config );
       break;
 
    case 0x43494e4e: /* "CINN" */
@@ -357,5 +357,11 @@ int synproto_parse_and_reply(
    }
 
    return retval;
+}
+
+void synproto_reset_calv_deadline( struct NETIO_CFG* config ) {
+   config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "reset keepalive deadline to: %lu", config->calv_deadline );
 }
 

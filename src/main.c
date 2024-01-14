@@ -17,6 +17,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       config->pkt_buf_sz = 0; /* Invalidate packet buffer. */
       retval = netio_connect( config );
       if( 0 != retval ) {
+         retval = 0;
          goto cleanup;
       }
    }
@@ -83,7 +84,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
       /* Note: This is not STAT_ERROR because that might produce too many
        * dialogs, overwhelming Win16! */
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
-         "timed out (%u past %u), restarting!",
+         "timed out (%lu past %lu), restarting!",
          time_now, config->calv_deadline );
       if( 0 != config->socket_fd ) {
          netio_disconnect( config );

@@ -93,9 +93,11 @@ int netio_connect( struct NETIO_CFG* config ) {
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO, "connected!" );
 
-   config->calv_deadline = osio_get_time() + SYNPROTO_TIMEOUT_MS;
-
 cleanup:
+
+   /* Set this whether we succeed or fail... we're not doing keepalives yet!
+    */
+   synproto_reset_calv_deadline( config );
 
    return retval;
 }
@@ -218,8 +220,10 @@ cleanup:
 }
 
 void netio_disconnect( struct NETIO_CFG* config ) {
+   
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "closing socket..." );
+
 #if defined( MINPUT_OS_WIN16 ) || defined( MINPUT_OS_WIN32 )
    closesocket( config->socket_fd );
 #else
