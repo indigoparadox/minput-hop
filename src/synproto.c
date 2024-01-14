@@ -328,7 +328,7 @@ int synproto_parse_and_reply(
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "out!" );
       break;
 
-   case 0x44534f50:
+   case 0x44534f50: /* DSOP */
       /* TODO: Handle options. */
       break;
 
