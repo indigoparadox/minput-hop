@@ -304,6 +304,10 @@ LRESULT CALLBACK WndProc(
          osio_win_quit( window_h, 0, 1 );
          break;
 
+      case ID_WIN_MENU_FILE_MINIMIZE:
+         PostMessage( window_h, WM_SYSCOMMAND, SC_MINIMIZE, 0 );
+         break;
+
 #ifdef MINPUT_OS_WIN32
       case ID_WIN_MENU_FILE_HIDE:
          /* We can restore from the notification area icon. */

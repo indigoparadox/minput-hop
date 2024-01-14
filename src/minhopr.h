@@ -7,6 +7,7 @@
 #define ID_WIN_SAVE                    5005
 #define ID_WIN_MENU_FILE_EXIT          5100
 #define ID_WIN_MENU_FILE_HIDE          5101
+#define ID_WIN_MENU_FILE_MINIMIZE      5102
 #define ID_TRAY_CONTEXT_EXIT           3000
 #define ID_TRAY_CONTEXT_HIDE           3001
 #define ID_TRAY_CONTEXT_SHOW           3002
