@@ -14,6 +14,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
 
    /* Ensure we are connected; reconnect if not. */
    if( 0 == config->socket_fd ) {
+      config->pkt_buf_sz = 0; /* Invalidate packet buffer. */
       retval = netio_connect( config );
       if( 0 != retval ) {
          goto cleanup;

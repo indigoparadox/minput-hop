@@ -84,8 +84,10 @@ int netio_connect( struct NETIO_CFG* config ) {
       (struct sockaddr*)&servaddr, sizeof( struct sockaddr ) );
    if( retval ) {
       /* perror( "connect" ); */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
          "could not connect socket" );
+      netio_disconnect( config );
+      retval = MINHOP_ERR_CONNECT;
       goto cleanup;
    }
 
@@ -224,6 +226,9 @@ void netio_disconnect( struct NETIO_CFG* config ) {
    close( config->socket_fd );
 #endif /* MINPUT_OS_WIN */
    config->socket_fd = 0;
+
+   /* Reset packet buffer. */
+   config->pkt_buf_sz = 0;
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "disconnected!" );
