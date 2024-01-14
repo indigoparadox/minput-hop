@@ -242,7 +242,10 @@ LRESULT CALLBACK WndProc(
 #ifdef MINPUT_OS_WIN32
       /* Create the notification area menu. */
       popup_menu = CreatePopupMenu();
-      AppendMenu( popup_menu, MF_STRING, ID_TRAY_CONTEXT_EXIT, "Exit" );
+      AppendMenu( popup_menu, MF_STRING, ID_TRAY_CONTEXT_HIDE, "&Hide" );
+      AppendMenu( popup_menu, MF_STRING, ID_TRAY_CONTEXT_SHOW, "&Show" );
+      AppendMenu( popup_menu, MF_SEPARATOR | MF_BYPOSITION, 0, NULL );
+      AppendMenu( popup_menu, MF_STRING, ID_TRAY_CONTEXT_EXIT, "E&xit" );
 #endif /* MINPUT_OS_WIN32 */
 
       break;
@@ -285,6 +288,10 @@ LRESULT CALLBACK WndProc(
          );
          if( ID_TRAY_CONTEXT_EXIT == popup_menu_clicked ) {
             osio_win_quit( window_h, 0, 1 );
+         } else if( ID_TRAY_CONTEXT_HIDE == popup_menu_clicked ) {
+            ShowWindow( window_h, SW_HIDE );
+         } else if( ID_TRAY_CONTEXT_SHOW == popup_menu_clicked ) {
+            ShowWindow( window_h, SW_SHOW );
          }
          break;
       }
@@ -296,6 +303,13 @@ LRESULT CALLBACK WndProc(
       case ID_WIN_MENU_FILE_EXIT:
          osio_win_quit( window_h, 0, 1 );
          break;
+
+#ifdef MINPUT_OS_WIN32
+      case ID_WIN_MENU_FILE_HIDE:
+         /* We can restore from the notification area icon. */
+         ShowWindow( window_h, SW_HIDE );
+         break;
+#endif /* MINPUT_OS_WIN32 */
 
       case ID_WIN_SAVE:
          osio_win_save_fields( client_name_h, server_addr_h, server_port_h );

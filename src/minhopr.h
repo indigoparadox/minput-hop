@@ -6,6 +6,9 @@
 #define ID_WIN_SERVER_ADDR             5003
 #define ID_WIN_SAVE                    5005
 #define ID_WIN_MENU_FILE_EXIT          5100
+#define ID_WIN_MENU_FILE_HIDE          5101
 #define ID_TRAY_CONTEXT_EXIT           3000
+#define ID_TRAY_CONTEXT_HIDE           3001
+#define ID_TRAY_CONTEXT_SHOW           3002
 #define WM_TRAYICON ( WM_USER + 1 )
 
