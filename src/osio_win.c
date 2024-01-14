@@ -115,10 +115,10 @@ static HWND osio_win_add_field(
       "static", label, WS_CHILD | WS_VISIBLE,
       10, y, 110, 20, parent_h, NULL,
       instance_h, NULL );
-   out_h = CreateWindowEx(
 #ifdef MINPUT_OS_WIN16
-      0,
+   CreateWindow(
 #else
+   out_h = CreateWindowEx(
       /* Use 3D look in 32-bit Windows. */
       WS_EX_CLIENTEDGE,
 #endif /* MINPUT_OS_WIN16 */
@@ -169,6 +169,11 @@ LRESULT CALLBACK WndProc(
    static HWND server_addr_h = (HWND)NULL;
    static HWND server_port_h = (HWND)NULL;
    static HWND save_h = (HWND)NULL;
+#ifdef MINPUT_OS_WIN32
+   static HMENU popup_menu = (HMENU)NULL;
+   POINT cursor_pt;
+   UINT popup_menu_clicked = 0;
+#endif /* MINPUT_OS_WIN32 */
    HANDLE instance_h = (HANDLE)NULL;
    char num_buffer[OSIO_NUM_BUFFER_SZ + 1];
 
@@ -195,16 +200,27 @@ LRESULT CALLBACK WndProc(
          instance_h, NULL );
 
 #ifdef DEBUG
+      /* This is the field used to display key debug info... only in
+       * DEBUG mode!
+       */
       g_key_label_h = CreateWindow(
          "static", "", WS_CHILD | WS_VISIBLE,
          80, 95, 200, 45, window_h, NULL,
          instance_h, NULL );
 #endif /* DEBUG */
 
+      /* Status notification label at the bottom. */
       g_status_label_h = CreateWindow(
          "static", "", WS_CHILD | WS_VISIBLE,
          10, 140, 270, 20, window_h, NULL,
          instance_h, NULL );
+
+#ifdef MINPUT_OS_WIN32
+      /* Create the notification area menu. */
+      popup_menu = CreatePopupMenu();
+      AppendMenu( popup_menu, MF_STRING, ID_TRAY_CONTEXT_EXIT, "Exit" );
+#endif /* MINPUT_OS_WIN32 */
+
       break;
 
    case WM_TIMER:
@@ -213,6 +229,41 @@ LRESULT CALLBACK WndProc(
          /* TODO: Exit on bad retval? */
       }
       break;
+
+#ifdef MINPUT_OS_WIN32
+   case WM_DESTROY:
+      /* Cleanup the notification area popup menu. */
+      DestroyMenu( popup_menu );
+      break;
+#endif /* MINPUT_OS_WIN32 */
+
+#ifdef MINPUT_OS_WIN32
+   case WM_TRAYICON:
+      switch( lParam ) {
+      case WM_LBUTTONDBLCLK:
+         /* Restore the window, as the notification area icon was clicked! */
+         ShowWindow( window_h, SW_SHOW );
+         break;
+
+      case WM_RBUTTONDOWN:
+         GetCursorPos( &cursor_pt );
+         SetForegroundWindow( window_h ); 
+         popup_menu_clicked = TrackPopupMenu(
+            popup_menu,
+            TPM_RETURNCMD | TPM_NONOTIFY,
+            cursor_pt.x,
+            cursor_pt.y,
+            0,
+            window_h,
+            NULL
+         );
+         if( ID_TRAY_CONTEXT_EXIT == popup_menu_clicked ) {
+            osio_win_quit( window_h );
+         }
+         break;
+      }
+      break;
+#endif /* MINPUT_OS_WIN32 */
 
    case WM_COMMAND:
       switch( wParam ) {
@@ -227,8 +278,28 @@ LRESULT CALLBACK WndProc(
       break;
 
    case WM_CLOSE:
+#ifdef MINPUT_OS_WIN32
+      /* We can restore from the notification area icon. */
+      ShowWindow( window_h, SW_HIDE );
+#else
       /* Quit program on main window close. */
       osio_win_quit( window_h );
+#endif /* MINPUT_OS_WIN32 */
+      break;
+
+   case WM_SYSCOMMAND:
+      switch( wParam & 0xfff0 ) {
+#ifdef MINPUT_OS_WIN32
+         case SC_MINIMIZE:
+         case SC_CLOSE:
+            /* We can restore from the notification area icon. */
+            ShowWindow( window_h, SW_HIDE );
+            break;
+#endif /* MINPUT_OS_WIN32 */
+
+         default:
+            return DefWindowProc( window_h, message, wParam, lParam );
+      }
       break;
       
    default:
@@ -258,7 +329,9 @@ void osio_parse_args( int argc, char* argv[], struct NETIO_CFG* config ) {
 
 int osio_ui_setup() {
    int retval = 0;
-   WNDCLASS wc = { 0 };
+   WNDCLASS wc;
+
+   memset( &wc, '\0', sizeof( WNDCLASS ) );
 
 #ifdef MINPUT_OS_WIN32
    WM_TASKBARCREATED = RegisterWindowMessage( "TaskbarCreated" );
@@ -270,7 +343,11 @@ int osio_ui_setup() {
    wc.hInstance = g_instance;
    wc.hIcon = LoadIcon( g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
    wc.hCursor = LoadCursor( 0, IDC_ARROW );
+#ifdef MINPUT_OS_WIN32
    wc.hbrBackground = (HBRUSH)( COLOR_WINDOW );
+#elif defined( MINPUT_OS_WIN16 )
+   wc.hbrBackground = (HBRUSH)( COLOR_WINDOW + 1 );
+#endif /* MINPUT_OS_WIN */
    wc.lpszMenuName = "MinhopWindowMenu";
    wc.lpszClassName = "MinhopWindowClass";
 
@@ -283,8 +360,7 @@ int osio_ui_setup() {
 
    /* Create the window. */
 
-   g_window = CreateWindowEx(
-      0,
+   g_window = CreateWindow(
       "MinhopWindowClass",
       "Minput Hop",
       WS_OVERLAPPEDWINDOW & ~WS_MAXIMIZEBOX & ~WS_THICKFRAME,
@@ -307,7 +383,7 @@ int osio_ui_setup() {
 
    /* Setup timer to call the packet processing iterator. */
 
-   if( !SetTimer( g_window, ID_TIMER_LOOP, 10, NULL ) ) {
+   if( !SetTimer( g_window, ID_TIMER_LOOP, 100, NULL ) ) {
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
          "could not set timer!\n" );
       retval = MINHOP_ERR_OS;
@@ -316,7 +392,7 @@ int osio_ui_setup() {
 
 #ifdef MINPUT_OS_WIN32
 
-   /* Setup and display tray notification icon. */
+   /* Setup and display tray notification area icon. */
 
    memset( &g_notify_icon_data, '\0', sizeof( NOTIFYICONDATA ) );
 
@@ -326,7 +402,9 @@ int osio_ui_setup() {
    g_notify_icon_data.uFlags = NIF_ICON | NIF_MESSAGE | NIF_TIP;
    g_notify_icon_data.hIcon = LoadIcon(
       g_instance, MAKEINTRESOURCE( ID_MINHOP_ICO ) );
-   strcpy( g_notify_icon_data.szTip, "Minput Hop" );
+   strcpy( g_notify_icon_data.szTip,
+      "Minput Hop (double-click to restore)" );
+   g_notify_icon_data.uCallbackMessage = WM_TRAYICON;
 
    Shell_NotifyIcon( NIM_ADD, &g_notify_icon_data );
 

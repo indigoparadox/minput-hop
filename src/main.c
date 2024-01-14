@@ -25,7 +25,7 @@ int minput_loop_iter( struct NETIO_CFG* config ) {
 #endif /* DEBUG */
 
    /* Process packets and handle protocol/input events. */
-   retval = minhop_process_packets( config );
+   retval = netio_process_packets( config );
    if( MINHOP_ERR_RECV == retval ) {
       /* Not a show-stopper, but try to reconnect! */
       retval = 0;

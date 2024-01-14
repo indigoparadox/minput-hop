@@ -44,7 +44,7 @@ int netio_connect( struct NETIO_CFG* config ) {
    struct sockaddr_in servaddr;
    int retval = 0;
 #if defined( MINPUT_OS_WIN32 ) || defined( MINPUT_OS_WIN16 )
-   uint32_t timeout = 1000; /* 1000 ms = 1sec */
+   uint32_t timeout = 100; /* 100 ms = 0.1sec */
 #else
    struct timeval timeout;
 
@@ -98,7 +98,7 @@ cleanup:
    return retval;
 }
 
-int minhop_process_packets( struct NETIO_CFG* config ) {
+int netio_process_packets( struct NETIO_CFG* config ) {
    uint32_t pkt_claim_sz;
    int32_t recv_sz = 0;
    char sockbuf[SOCKBUF_SZ + 1];

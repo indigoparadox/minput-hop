@@ -3,7 +3,7 @@
 #define MINHOP_H
 
 /**
- * \file minhop.h
+ * \file netio.h
  * \brief Contains network-transported-related functions and structs.
  */
 
@@ -18,7 +18,7 @@ int netio_setup( struct NETIO_CFG* config );
 
 int netio_connect( struct NETIO_CFG* config );
 
-int minhop_process_packets( struct NETIO_CFG* config );
+int netio_process_packets( struct NETIO_CFG* config );
 
 void netio_disconnect( struct NETIO_CFG* config );
 

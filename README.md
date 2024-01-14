@@ -29,4 +29,5 @@ This might be simplified somewhat later, but it works for now.
 - Programming Windows, 3rd Edition - Petzold, Charles
 - [qemu](https://www.qemu.org/docs/master/interop/barrier.html) docs for Barrier protocol information.
 - @cvtsi2sd@hachyderm.io for undocumented \*\_event() calls in Windows 3.
+- [Bobobobo's weblog](https://bobobobo.wordpress.com/2009/03/30/adding-an-icon-system-tray-win32-c/) for a detailed example of using the tray notification area.
 
