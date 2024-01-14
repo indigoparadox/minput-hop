@@ -259,19 +259,24 @@ int synproto_parse_and_reply(
          break;
       }
 
+      if( 2 != clp_mark ) {
+         /* TODO: Handle mark sequence properly. */
+         break;
+      }
+
 #ifdef DEBUG_PROTO_CLIP
       osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
          "DCLP: id: %02x, seq: %08lx, mark: %02x, sz: %lu bytes: ",
          clp_id, clp_seq, clp_mark, pkt_buf_sz );
-      if( 2 == clp_mark ) {
-         for( i = DCLP_BUF_START ; pkt_buf_sz > i ; i++ ) {
-            osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG,
-               "%c (%02x) ",
-               pkt_buf[i] > 32 /* Is printable? */ ? pkt_buf[i] : ' ',
-               pkt_buf[i] );
-         }
+      for( i = DCLP_BUF_START ; pkt_buf_sz > i ; i++ ) {
+         osio_printf( NULL, __LINE__, MINPUT_STAT_DEBUG,
+            "%c (%02x) ",
+            pkt_buf[i] > 32 /* Is printable? */ ? pkt_buf[i] : ' ',
+            pkt_buf[i] );
       }
 #endif /* DEBUG_PROTO_CLIP */
+
+      assert( DCLP_BUF_START < pkt_buf_sz );
 
       osio_set_clipboard(
          &(pkt_buf[DCLP_BUF_START]), pkt_buf_sz - DCLP_BUF_START );

@@ -743,7 +743,50 @@ void osio_key_rpt( uint16_t key_id, uint16_t key_mod, uint16_t key_btn ) {
 }
 
 void osio_set_clipboard( const char* buffer, size_t buffer_sz ) {
+   HGLOBAL clip_mem_h = (HGLOBAL)NULL;
+   char far* clip_mem_ptr = NULL;
+#ifdef DEBUG_PROTO_CLIP
+   char* buffer_pr = NULL;
 
+   buffer_pr = calloc( 1, buffer_sz + 1 );
+   if( NULL == buffer_pr ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not allocate print buffer of %lu bytes!", buffer_sz + 1 );
+      return;
+   }
+
+   strncpy( buffer_pr, buffer, buffer_sz );
+   osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
+      "clipboard in: %s", buffer_pr );
+
+   free( buffer_pr );
+#endif /* DEBUG_PROTO_CLIP */
+
+   /* Put the contents of the buffer onto the clipboard. */
+
+   /* TODO: Convert line endings to Windows format. */
+
+   clip_mem_h = GlobalAlloc( GMEM_MOVEABLE, buffer_sz + 1 /* Null term. */ );
+   if( (HGLOBAL)NULL == clip_mem_h ) {
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR,
+         "could not allocate clipboard buffer of %lu bytes!", buffer_sz + 1 );
+   }
+
+   /* Copy the clipboard data to a global allocation. */
+   clip_mem_ptr = GlobalLock( clip_mem_h );
+#ifdef DEBUG
+   assert( NULL != clip_mem_ptr );
+#endif /* DEBUG */
+   _fmemcpy( clip_mem_ptr, buffer, buffer_sz );
+   GlobalUnlock( clip_mem_h );
+
+   /* Pass global allocation to the clipboard. */
+   OpenClipboard( 0 );
+   EmptyClipboard();
+   SetClipboardData( CF_TEXT, clip_mem_h );
+   CloseClipboard();
+   
+   /* Don't free clipboard memory as the system owns it now. */
 }
 
 void osio_logging_setup() {
