@@ -12,11 +12,17 @@
 #  define SOCKBUF_SZ 2048
 #endif /* !SOCKBUF_SZ */
 
+#ifndef PKT_PROC_PER_LOOP
+#  define PKT_PROC_PER_LOOP 10
+#endif /* PKT_PROC_PER_LOOP */
+
 #include "minput.h"
 
 int netio_setup( struct NETIO_CFG* config );
 
 int netio_connect( struct NETIO_CFG* config );
+
+int netio_fetch_packets( struct NETIO_CFG* config );
 
 int netio_process_packets( struct NETIO_CFG* config );
 

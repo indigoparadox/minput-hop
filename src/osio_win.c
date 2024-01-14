@@ -194,6 +194,7 @@ LRESULT CALLBACK WndProc(
 #endif /* MINPUT_OS_WIN32 */
    HANDLE instance_h = (HANDLE)NULL;
    char num_buffer[OSIO_NUM_BUFFER_SZ + 1];
+   int retval = 0;
 
    /* Handle window messages. */
 
@@ -248,8 +249,10 @@ LRESULT CALLBACK WndProc(
 
    case WM_TIMER:
       if( ID_TIMER_LOOP == wParam ) {
-         minput_loop_iter( &g_config );
-         /* TODO: Exit on bad retval? */
+         retval = minput_loop_iter( &g_config );
+         if( retval ) {
+            osio_win_quit( window_h, retval );
+         }
       }
       break;
 
