@@ -155,10 +155,10 @@ int synproto_parse_and_reply(
    struct NETIO_CFG* config, const char* pkt_buf, uint32_t pkt_buf_sz
 ) {
    uint32_t* pkt_type_p = (uint32_t*)&(pkt_buf[4]);
+   static uint16_t mouse_x = 0,
+      mouse_y = 0;
    uint16_t ver_maj = 0,
       ver_min = 0,
-      mouse_x = 0,
-      mouse_y = 0,
       screen_w = 0,
       screen_h = 0,
       key_id = 0,
@@ -244,12 +244,16 @@ int synproto_parse_and_reply(
       break;
 
    case 0x43494e4e: /* "CINN" */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "in!" );
+#ifdef DEBUG_PROTO_MOUSE
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "CINN" );
+#endif /* DEBUG_PROTO_MOUSE */
       break;
 
    case 0x44434c50: /* DCLP */
-      /* TODO: Transfer clipboard data. */
-      #define DCLP_BUF_START 30
+
+      /* Where the clipboard data starts in the packet. */
+#     define DCLP_BUF_START 30
+
       clp_id = synproto_exval_8( pkt_buf, 8 );
       clp_seq = synproto_exval_16( pkt_buf, 9 );
       clp_mark = synproto_exval_8( pkt_buf, 13 );
@@ -299,14 +303,12 @@ int synproto_parse_and_reply(
       break;
 
    case 0x444d444e: /* DMDN */
-      /* OS-specific mouse click. */
-      /* XXX: Don't get mouse_x? */
+      /* OS-specific mouse click. Use coords from last DMMV. */
       osio_mouse_down( mouse_x, mouse_y, pkt_buf[8] );
       break;
 
    case 0x444d5550: /* DMUP */
-      /* OS-specific mouse click. */
-      /* XXX: Don't get mouse_x? */
+      /* OS-specific mouse click. Use coords from last DMMV. */
       osio_mouse_up( mouse_x, mouse_y, pkt_buf[8] );
       break;
 
@@ -319,7 +321,7 @@ int synproto_parse_and_reply(
       break;
 
    case 0x444b5550: /* DKUP */
-      /* OS-specific key press. */
+      /* OS-specific key release. */
       key_id = synproto_exval_16( pkt_buf, 8 );
       key_mod = synproto_exval_16( pkt_buf, 10 );
       key_btn = synproto_exval_16( pkt_buf, 12 );
@@ -327,7 +329,7 @@ int synproto_parse_and_reply(
       break;
 
    case 0x444b5250: /* DKRP */
-      /* OS-specific key press. */
+      /* OS-specific key repeat. */
       key_id = synproto_exval_16( pkt_buf, 8 );
       key_mod = synproto_exval_16( pkt_buf, 10 );
       key_btn = synproto_exval_16( pkt_buf, 12 );
@@ -335,7 +337,9 @@ int synproto_parse_and_reply(
       break;
 
    case 0x434f5554: /* COUT */
-      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "out!" );
+#ifdef DEBUG_PROTO_MOUSE
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG, "COUT" );
+#endif /* DEBUG_PROTO_MOUSE */
       break;
 
    case 0x44534f50: /* DSOP */

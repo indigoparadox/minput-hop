@@ -86,8 +86,6 @@ static void vsnprintf(
                   spec.u = va_arg( args, unsigned int );
                }
 
-               /* TODO */
-
                _ultoa( spec.u, itoa_buf, 16 );
                i_out += strlen( itoa_buf );
                strcat( buffer, itoa_buf );

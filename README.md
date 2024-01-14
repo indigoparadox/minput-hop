@@ -24,6 +24,11 @@ This might be simplified somewhat later, but it works for now.
  - Abstract socket send/recv/etc into layer that can be switched out for e.g.
    serial communication over RS-232.
 
+## Known Issues
+
+ - Does not handle the mouse being held down gracefully, especially in MSPAINT.
+ - Does not handle mouse interactions well inside of its own window.
+
 ## Debug Defines
 
 In addition to the DEBUG compile-time definition, some fine-grained debug statements have been placed inside the following definitions to keep verbosity in the logs down when not needed:
