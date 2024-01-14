@@ -47,6 +47,8 @@
 #define synproto_exval_16( buffer, offset ) \
    (swap_16( *((uint16_t*)&(buffer[offset])) ))
 
+#define synproto_exval_8( buffer, offset ) (buffer[offset])
+
 /**
  * \brief Given a buffer with a string from the Synergy server, dump it into
  *        a more human-readable form.

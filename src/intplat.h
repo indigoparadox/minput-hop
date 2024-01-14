@@ -10,6 +10,7 @@ typedef unsigned char uint8_t;
 typedef short int16_t;
 typedef long int32_t;
 typedef int ssize_t;
+typedef signed char int8_t;
 
 #elif defined MINPUT_OS_WIN16
 
@@ -20,6 +21,7 @@ typedef short int16_t;
 typedef long int32_t;
 typedef int ssize_t;
 typedef unsigned int size_t;
+typedef signed char int8_t;
 
 #else
 #  include <stdint.h>

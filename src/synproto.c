@@ -211,7 +211,7 @@ int synproto_parse_and_reply(
 #ifdef DEBUG
       osio_printf(
          __FILE__, __LINE__, MINPUT_STAT_DEBUG,
-         "sw: %u, sh: %u\n", screen_w, screen_h );
+         "QINF: sw: %u, sh: %u\n", screen_w, screen_h );
 #endif /* DEBUG */
 
       synproto_send(

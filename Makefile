@@ -13,18 +13,20 @@ RES_PATH_W16 := obj/win16/src/minhop.res
 minhop: CFLAGS_GCC :=
 
 ifneq ("$(BUILD)", "RELEASE")
-	CFLAGS_WATCOM_W32 += -we -DDEBUG
-	CFLAGS_WATCOM_W16 += -we -DDEBUG
+	CFLAGS_WATCOM_W32 += -we -DDEBUG -d3 -db -hc -DDEBUG_PROTO_CLIP
+	CFLAGS_WATCOM_W16 += -we -DDEBUG -d3 -db -hc -DDEBUG_PROTO_CLIP
 	CFLAGS_GCC += -g -fsanitize=address -fsanitize=leak -fsanitize=undefined  -DDEBUG -Werror -Wall
+	LDFLAGS_WATCOM_W16 += debug codeview
+	LDFLAGS_WATCOM_W32 += debug codeview
 endif
 
 all: minhop minhop32.exe minhop16.exe
 
 minhop32.exe: $(addprefix obj/win32/,$(OBJECTS)) obj/win32/src/osio_win.o | $(RES_PATH_W32)
-	wlink system nt_win name minhop32 lib wsock32 lib winmm fil {$^} option resource $(RES_PATH_W32)
+	wlink system nt_win name minhop32 $(LDFLAGS_WATCOM_W16) lib wsock32 lib winmm fil {$^} option resource $(RES_PATH_W32)
 
 minhop16.exe: $(addprefix obj/win16/,$(OBJECTS)) obj/win16/src/osio_win.o | $(RES_PATH_W16)
-	wlink system windows name minhop16 lib winsock lib mmsystem fil {$^} option resource $(RES_PATH_W16)
+	wlink system windows name minhop16 $(LDFLAGS_WATCOM_W16) lib winsock lib mmsystem fil {$^} option resource $(RES_PATH_W16)
 
 minhop: $(addprefix obj/unix/,$(OBJECTS)) obj/unix/src/osio_unix.o
 	gcc $(CFLAGS_GCC) -o "$@" $^

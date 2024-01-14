@@ -73,6 +73,13 @@ void keybd_event(
 
 #endif /* MINPUT_OS_WIN16 */
 
+#ifdef MINPUT_NO_ULTOA
+
+/* Needed for borland. */
+#define _ultoa( a, b, c ) ltoa( a, b, c )
+
+#endif /* MINPUT_NO_ULTOA */
+
 static UINT WM_TASKBARCREATED = 0;
 static HWND g_window = NULL;
 static HWND g_status_label_h = NULL;
