@@ -88,7 +88,7 @@ static int g_running = 1;
 static NOTIFYICONDATA g_notify_icon_data;
 #endif /* MINPUT_OS_WIN32 */
 
-static void osio_win_quit( HWND window_h ) {
+static void osio_win_quit( HWND window_h, int retval ) {
    
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
       "quit command received from UI...\n" );
@@ -116,7 +116,7 @@ static HWND osio_win_add_field(
       10, y, 110, 20, parent_h, NULL,
       instance_h, NULL );
 #ifdef MINPUT_OS_WIN16
-   CreateWindow(
+   out_h = CreateWindow(
 #else
    out_h = CreateWindowEx(
       /* Use 3D look in 32-bit Windows. */
@@ -162,6 +162,14 @@ static void osio_win_save_fields(
    netio_connect( &g_config );
 }
 
+#define osio_assert_control( ctl_h ) \
+   if( NULL == ctl_h ) { \
+      osio_printf( __FILE__, __LINE__, MINPUT_STAT_ERROR, \
+         "could not allocate: " #ctl_h ); \
+      osio_win_quit( window_h, MINHOP_ERR_OS ); \
+      goto cleanup; \
+   }
+
 LRESULT CALLBACK WndProc(
    HWND window_h, UINT message, WPARAM wParam, LPARAM lParam
 ) {
@@ -184,12 +192,17 @@ LRESULT CALLBACK WndProc(
       /* Create text fields. */
       client_name_h = osio_win_add_field(
          window_h, instance_h, "Client name", 10, ID_WIN_CLIENT_NAME );
+      osio_assert_control( client_name_h );
       SetWindowText( client_name_h, g_config.client_name );
+      
       server_addr_h = osio_win_add_field(
          window_h, instance_h, "Server address", 40, ID_WIN_SERVER_ADDR );
+      osio_assert_control( server_addr_h );
       SetWindowText( server_addr_h, g_config.server_addr );
+      
       server_port_h = osio_win_add_field(
          window_h, instance_h, "Server port", 70, ID_WIN_SERVER_ADDR );
+      osio_assert_control( server_port_h );
       memset( num_buffer, '\0', OSIO_NUM_BUFFER_SZ + 1 );
       _ultoa( g_config.server_port, num_buffer, 10 );
       SetWindowText( server_port_h, num_buffer );
@@ -258,7 +271,7 @@ LRESULT CALLBACK WndProc(
             NULL
          );
          if( ID_TRAY_CONTEXT_EXIT == popup_menu_clicked ) {
-            osio_win_quit( window_h );
+            osio_win_quit( window_h, 0 );
          }
          break;
       }
@@ -268,7 +281,7 @@ LRESULT CALLBACK WndProc(
    case WM_COMMAND:
       switch( wParam ) {
       case ID_WIN_MENU_FILE_EXIT:
-         osio_win_quit( window_h );
+         osio_win_quit( window_h, 0 );
          break;
 
       case ID_WIN_SAVE:
@@ -283,7 +296,7 @@ LRESULT CALLBACK WndProc(
       ShowWindow( window_h, SW_HIDE );
 #else
       /* Quit program on main window close. */
-      osio_win_quit( window_h );
+      osio_win_quit( window_h, 0 );
 #endif /* MINPUT_OS_WIN32 */
       break;
 
@@ -306,6 +319,7 @@ LRESULT CALLBACK WndProc(
       return DefWindowProc( window_h, message, wParam, lParam );
    }
 
+cleanup:
    return 0;
 }
 
@@ -442,6 +456,7 @@ int osio_loop( struct NETIO_CFG* config ) {
             osio_printf( __FILE__, __LINE__, MINPUT_STAT_DEBUG,
                "found quit message while still running!\n" );
          }
+         retval = msg.wParam;
 #endif
          g_running = 0;
       }
@@ -449,10 +464,6 @@ int osio_loop( struct NETIO_CFG* config ) {
 
    osio_printf( __FILE__, __LINE__, MINPUT_STAT_INFO,
       "leaving message loop...\n" );
-
-   if( 0 < retval ) {
-      retval = 0;
-   }
 
    return retval;
 }
